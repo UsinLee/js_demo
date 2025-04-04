@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CODE</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#232427] text-[#e5e7eb]">
+  <div class="board-wrapper">
+    <!-- 제목 -->
+    <header class="py-10 flex justify-center items-center border-b border-[#2e2f33]">
+        <h1 class="text-5xl font-bold text-white">CODE</h1>
+    </header>
+  </div>
+
+  <div id="postList" class="max-w-3xl mx-auto mt-8 bg-[#2b2c30] rounded-xl shadow">
+    <!-- 게시글 목록 -->
+
+  </div>
+
+  <div class="max-w-3xl mx-auto mt-8 flex justify-between items-center px-2">
+    <!-- 페이지 번호 -->
+    
+    <!-- 게시글 작성 버튼 -->
+    <div class="ml-auto">
+        <a href="/board_create.html" 
+           class="bg-[#10a37f] hover:bg-[#0d8f6d] text-white px-4 py-2 rounded text-sm font-medium">
+          글쓰기
+        </a>
+      </div>
+  </div>
+
+  <div>
+    <!-- 게시글 작성 -->
+
+  </div>
+
+  <script>
+    const postList = document.getElementById('postList');
+    const posts = JSON.parse(localStorage.getItem("posts") || "[]");
+
+    posts.forEach((post, index) => {
+        const postNumber = posts.length - index;
+
+    const el = document.createElement("div");
+    el.className = "flex items-center border-b border-[#3a3b3e] py-2 px-4 text-sm text-gray-300";
+
+    const date = new Date(post.date);
+    const formattedDate = date.toLocaleString("ko-KR", {
+        year: "2-digit",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+    }).replace(/\./g, '-').replace(/\s/g, '');
+
+    // 세 부분을 나눠서 정렬
+    el.innerHTML = `
+        <div class="w-1/6 text-left">${postNumber}</div>
+        <div class="w-3/6 text-center truncate">
+            <a href="board_view.html?index=${index}" class="hover:underline text-white">${post.title}</a>
+        </div>
+        <div class="w-2/6 text-right">${formattedDate}</div>
+    `;
+
+
+    postList.appendChild(el);
+    });
+
+  </script>
+  
+</body>
+</html>

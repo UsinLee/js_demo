@@ -1,0 +1,17 @@
+# Node.js 관련
+node_modules/
+.env
+*.log
+
+# Editor 관련
+.vscode/
+.idea/
+.cursor/
+
+# OS 관련
+.DS_Store
+Thumbs.db
+
+# 빌드/캐시
+dist/
+build/

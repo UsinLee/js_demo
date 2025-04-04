@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>게시글 보기</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#232427] text-[#e5e7eb]">
+
+  <main class="max-w-3xl mx-auto mt-10 p-6 bg-[#2b2c30] rounded-xl shadow space-y-6">
+    <h1 id="postTitle" class="text-2xl font-bold"></h1>
+    <p id="postDate" class="text-sm text-gray-400"></p>
+    <hr class="border-[#3a3b3e]" />
+    <p id="postContent" class="text-base leading-relaxed whitespace-pre-wrap"></p>
+
+    <div class="text-right">
+      <a href="index.html" class="text-[#10a37f] hover:underline text-sm">← 돌아가기</a>
+      <a id="editBtn" class="text-sm text-blue-400 hover:underline cursor-pointer">✏️ 수정</a>
+      <button id="deleteBtn" class="text-sm text-red-400 hover:underline">🗑 삭제</button>
+    </div>
+  </main>
+
+  <script>
+    // URL에서 index=값 읽기
+    const params = new URLSearchParams(window.location.search);
+    const index = parseInt(params.get("index"));
+
+    const posts = JSON.parse(localStorage.getItem("posts") || "[]");
+
+    if (isNaN(index) || index < 0 || index >= posts.length) {
+      document.body.innerHTML = "<p class='text-center mt-10 text-red-400'>존재하지 않는 게시글입니다.</p>";
+    } else {
+      const post = posts[index]; // 최신글이 위로 쌓였으므로 역순
+
+      document.getElementById("postTitle").textContent = post.title;
+      document.getElementById("postDate").textContent = `작성일: ${post.date}`;
+      document.getElementById("postContent").textContent = post.content;
+      document.getElementById("editBtn").href = `board_edit.html?index=${index}`;
+    }
+
+    // 삭제 버튼 클릭 시
+    document.getElementById("deleteBtn").addEventListener("click", () => {
+        if (!confirm("정말로 삭제하시겠습니까?")) return;
+    
+        const posts = JSON.parse(localStorage.getItem("posts") || "[]");
+    
+        posts.splice(index, 1); // 해당 index의 게시글 삭제
+    
+        localStorage.setItem("posts", JSON.stringify(posts));
+        alert("삭제되었습니다.");
+        window.location.href = "index.html";
+    });
+  </script>
+
+</body>
+</html>
