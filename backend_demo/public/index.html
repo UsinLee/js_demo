@@ -31,41 +31,147 @@
       </div>
   </div>
 
-  <div>
-    <!-- 게시글 작성 -->
-
+  <div class="max-w-3xl mx-auto mt-8 flex items-center gap-2 px-2">
+    <!-- 검색 창 -->
+    <input
+      id="searchInput"
+      type="text"
+      placeholder="제목 검색"
+      class="flex-grow px-4 py-2 bg-[#40414f] text-white border border-[#565869] rounded"
+    />
+    <button
+      id="searchBtn"
+      class="bg-[#10a37f] hover:bg-[#0d8f6d] text-white px-4 py-2 rounded">
+      검색
+    </button>
   </div>
+
+  <div id="pagination" class="flex justify-center mt-6 gap-2 text-sm text-gray-400"></div>
 
   <script>
     const postList = document.getElementById('postList');
     const posts = JSON.parse(localStorage.getItem("posts") || "[]");
 
-    posts.forEach((post, index) => {
-        const postNumber = posts.length - index;
+    const postsPerPage = 10;
+    const totalPages = Math.ceil(posts.length / postsPerPage);
+    let currentPage = totalPages; // 마지막 페이지부터 시작!
 
-    const el = document.createElement("div");
-    el.className = "flex items-center border-b border-[#3a3b3e] py-2 px-4 text-sm text-gray-300";
+    // 🔁 초기 전체 출력
+    renderPosts(currentPage);
 
-    const date = new Date(post.date);
-    const formattedDate = date.toLocaleString("ko-KR", {
-        year: "2-digit",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-    }).replace(/\./g, '-').replace(/\s/g, '');
+    // 🔥 공통 렌더링 함수
+    function renderPosts(page = 1) {
+      postList.innerHTML = "";
+    
+      // 1. 최신글이 먼저 오도록 정렬
+      const sortedPosts = [...posts].map((post, i) => ({
+        ...post,
+        index: i,
+        number: posts.length - i, // 게시물 번호 (1부터 시작, 최신이 가장 작은 번호)
+      }));
+    
+      // 2. 페이지 번호에 해당하는 게시물 번호 범위 구함
+      const startNum = (page - 1) * postsPerPage + 1;
+      const endNum = page * postsPerPage;
+    
+      // 3. 게시물 번호 기준으로 걸러냄
+      const paginatedPosts = sortedPosts.filter(
+        post => post.number >= startNum && post.number <= endNum
+      );
+    
+      // 4. 게시물 렌더링
+      paginatedPosts.forEach((post) => {
+        const date = new Date(post.date);
+        const formattedDate = date.toLocaleString("ko-KR", {
+          year: "2-digit",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        }).replace(/\./g, '-').replace(/\s/g, '');
+    
+        const el = document.createElement("div");
+        el.className = "flex items-center border-b border-[#3a3b3e] py-2 px-4 text-sm text-gray-300";
+    
+        el.innerHTML = `
+          <div class="w-1/6 text-left">${post.number}</div>
+          <div class="w-3/6 text-center truncate">
+            <a href="board_view.html?index=${post.index}" class="hover:underline text-white">${post.title}</a>
+          </div>
+          <div class="w-2/6 text-right">${formattedDate}</div>
+        `;
+    
+        postList.appendChild(el);
+      });
+    
+      renderPagination();
+    }
+    
+    
 
-    // 세 부분을 나눠서 정렬
-    el.innerHTML = `
-        <div class="w-1/6 text-left">${postNumber}</div>
-        <div class="w-3/6 text-center truncate">
-            <a href="board_view.html?index=${index}" class="hover:underline text-white">${post.title}</a>
-        </div>
-        <div class="w-2/6 text-right">${formattedDate}</div>
-    `;
+    function renderPagination() {
+      const pagination = document.getElementById("pagination");
+      pagination.innerHTML = "";
+    
+      const totalPages = Math.ceil(posts.length / postsPerPage);
+    
+      const groupSize = 10; // 🔥 한 번에 보여줄 페이지 수
+      const groupStart = Math.floor((currentPage - 1) / groupSize) * groupSize + 1;
+      const groupEnd = Math.min(groupStart + groupSize - 1, totalPages);
+    
+      // ◀ 왼쪽 화살표 → 다음 그룹 (오른쪽으로 이동)
+      if (groupEnd < totalPages) {
+        const next = document.createElement("button");
+        next.textContent = "◀";
+        next.className = "px-2 py-1 text-sm text-gray-400 hover:text-white";
+        next.addEventListener("click", () => {
+          currentPage = groupEnd + 1;
+          renderPosts(currentPage);
+        });
+        pagination.appendChild(next);
+      }
+    
+      // 페이지 번호
+      for (let i = groupEnd; i >= groupStart; i--) {
+        const btn = document.createElement("button");
+        btn.textContent = i;
+        btn.className = `px-3 py-1 rounded hover:bg-[#3a3b3e] ${
+          i === currentPage ? "bg-[#10a37f] text-white" : ""
+        }`;
+        btn.addEventListener("click", () => {
+          currentPage = i;
+          renderPosts(currentPage);
+        });
+        pagination.appendChild(btn);
+      }
+    
+      // ▶ 오른쪽 화살표 → 이전 그룹 (왼쪽으로 이동)
+      if (groupStart > 1) {
+        const prev = document.createElement("button");
+        prev.textContent = "▶";
+        prev.className = "px-2 py-1 text-sm text-gray-400 hover:text-white";
+        prev.addEventListener("click", () => {
+          currentPage = groupStart - 1;
+          renderPosts(currentPage);
+        });
+        pagination.appendChild(prev);
+      }
+    }
+    
+    
+
+    
 
 
-    postList.appendChild(el);
+    // 🔍 검색 기능
+    document.getElementById("searchBtn").addEventListener("click", () => {
+      const keyword = document.getElementById("searchInput").value.toLowerCase();
+
+      const filtered = posts
+        .map((post, index) => ({ post, index })) // ← 여기서 index 유지
+        .filter(({ post }) => post.title.toLowerCase().includes(keyword));
+
+      renderPosts(filtered);
     });
 
   </script>
