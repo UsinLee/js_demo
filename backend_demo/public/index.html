@@ -7,54 +7,116 @@
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-[#232427] text-[#e5e7eb]">
-  <div class="board-wrapper">
-    <!-- 제목 -->
-    <header class="py-10 flex justify-center items-center border-b border-[#2e2f33]">
-        <h1 class="text-5xl font-bold text-white">CODE</h1>
-    </header>
-  </div>
+  <div class="max-w-3xl mx-auto mt-10 space-y-6">
+    <div class="board-wrapper">
+      <!-- 제목 -->
+      <header class="py-10 flex justify-center items-center ">
+          <h1 class="text-5xl font-bold text-white">CODE</h1>
+      </header>
+    </div>
 
-  <div id="postList" class="max-w-3xl mx-auto mt-8 bg-[#2b2c30] rounded-xl shadow">
-    <!-- 게시글 목록 -->
-
-  </div>
-
-  <div class="max-w-3xl mx-auto mt-8 flex justify-between items-center px-2">
-    <!-- 페이지 번호 -->
+    <div class="flex justify-end items-center gap-4">
+      <!-- ✅ 로그인 상태 or 로그인 버튼 -->
+      <div id="loginStatus" class="text-sm text-gray-400"></div>
+      <!-- 🔓 로그아웃 버튼 -->
+      <button id="logoutBtn" class="text-sm text-red-400 hover:underline hidden">로그아웃</button>      
+    </div>
     
-    <!-- 게시글 작성 버튼 -->
-    <div class="ml-auto">
-        <a href="/board_create.html" 
-           class="bg-[#10a37f] hover:bg-[#0d8f6d] text-white px-4 py-2 rounded text-sm font-medium">
-          글쓰기
-        </a>
-      </div>
-  </div>
 
-  <div class="max-w-3xl mx-auto mt-8 flex items-center gap-2 px-2">
-    <!-- 검색 창 -->
-    <input
-      id="searchInput"
-      type="text"
-      placeholder="제목 검색"
-      class="flex-grow px-4 py-2 bg-[#40414f] text-white border border-[#565869] rounded"
-    />
-    <button
-      id="searchBtn"
-      class="bg-[#10a37f] hover:bg-[#0d8f6d] text-white px-4 py-2 rounded">
-      검색
-    </button>
-  </div>
 
-  <div id="pagination" class="flex justify-center mt-6 gap-2 text-sm text-gray-400"></div>
+    <div id="postList" class="max-w-3xl mx-auto mt-8 bg-[#2b2c30] rounded-xl shadow pd-10">
+      <!-- 게시글 목록 -->
+    </div>
+
+
+
+
+    <div class="max-w-3xl mx-auto mt-8 flex justify-between items-center px-2">
+      <!-- 페이지 번호 -->
+      
+      <!-- 게시글 작성 버튼 -->
+      <div class="ml-auto">
+          <a href="/board_create.html" 
+            class="bg-[#10a37f] hover:bg-[#0d8f6d] text-white px-4 py-2 rounded text-sm font-medium">
+            글쓰기
+          </a>
+        </div>
+    </div>
+
+    <div class="max-w-3xl mx-auto mt-8 flex items-center gap-2 px-2">
+      <!-- 검색 창 -->
+      <input
+        id="searchInput"
+        type="text"
+        placeholder="제목 검색"
+        class="flex-grow px-4 py-2 bg-[#40414f] text-white border border-[#565869] rounded"
+      />
+      <button
+        id="searchBtn"
+        class="bg-[#10a37f] hover:bg-[#0d8f6d] text-white px-4 py-2 rounded">
+        검색
+      </button>
+    </div>
+
+    <div id="pagination" class="flex justify-center mt-6 gap-2 text-sm text-gray-400"></div>
+  </div>
 
   <script>
     const postList = document.getElementById('postList');
-    const posts = JSON.parse(localStorage.getItem("posts") || "[]");
+    const rawPosts = JSON.parse(localStorage.getItem("posts") || "[]");
+    const posts = rawPosts.map((post, index) => ({
+      ...post,
+      index,
+      number: rawPosts.length - index
+    }));
 
     const postsPerPage = 10;
-    const totalPages = Math.ceil(posts.length / postsPerPage);
-    let currentPage = totalPages; // 마지막 페이지부터 시작!
+    //const totalPages = Math.ceil(posts.length / postsPerPage);
+    let currentPage = Math.ceil(posts.length / postsPerPage); // 기본은 최신글 페이지
+
+    const userInfo = JSON.parse(localStorage.getItem("currentUser"));
+    const loginStatus = document.getElementById("loginStatus");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    const urlParams = new URLSearchParams(location.search);
+    if (urlParams.get("newPost")) {
+      // 현재 페이지를 마지막 페이지로 설정
+      currentPage = Math.ceil(posts.length / postsPerPage);
+      
+      // 주소에서 ?newPost=1 제거해서 깔끔하게
+      history.replaceState(null, "", "index.html");
+    }
+    
+    // index.html 내 script 태그 안에 추가해줘
+    window.addEventListener("pageshow", (event) => {
+      const navType = performance.getEntriesByType("navigation")[0]?.type;
+
+      if (event.persisted || navType === "back_forward") {
+        // 브라우저 캐시로 돌아온 경우라면
+        location.reload(); // 강제로 새로고침
+      }
+    });
+
+
+    
+    if (userInfo) {
+      loginStatus.textContent = `👋 ${userInfo.username}님 환영합니다!`;
+      logoutBtn.classList.remove("hidden"); // 로그아웃 버튼 보이기
+    } else {
+      // 🔐 로그인하지 않았을 때 → 로그인 버튼으로 표시
+      const currentUrl = encodeURIComponent(location.href);
+      loginStatus.innerHTML = `<a href="login.html?redirect=${currentUrl}" class="text-blue-400 hover:underline">🔐 로그인</a>`;
+      logoutBtn.classList.add("hidden"); // 로그아웃 버튼 숨기기
+    }
+    
+    // 로그아웃 동작
+    logoutBtn.addEventListener("click", () => {
+      if (confirm("로그아웃 하시겠습니까?")) {
+        localStorage.removeItem("currentUser");
+        alert("로그아웃 되었습니다.");
+        location.reload();
+      }
+    });
 
     // 🔁 초기 전체 출력
     renderPosts(currentPage);
@@ -63,24 +125,14 @@
     function renderPosts(page = 1) {
       postList.innerHTML = "";
     
-      // 1. 최신글이 먼저 오도록 정렬
-      const sortedPosts = [...posts].map((post, i) => ({
-        ...post,
-        index: i,
-        number: posts.length - i, // 게시물 번호 (1부터 시작, 최신이 가장 작은 번호)
-      }));
+      const totalPages = Math.ceil(posts.length / postsPerPage);
+      const startIndex = (totalPages - page) * postsPerPage;
+      const endIndex = startIndex + postsPerPage;
     
-      // 2. 페이지 번호에 해당하는 게시물 번호 범위 구함
-      const startNum = (page - 1) * postsPerPage + 1;
-      const endNum = page * postsPerPage;
+      const paginatedPosts = posts.slice(startIndex, endIndex);
     
-      // 3. 게시물 번호 기준으로 걸러냄
-      const paginatedPosts = sortedPosts.filter(
-        post => post.number >= startNum && post.number <= endNum
-      );
-    
-      // 4. 게시물 렌더링
-      paginatedPosts.forEach((post) => {
+      paginatedPosts.forEach((post, idx) => {
+        const postNumber = posts.length - (startIndex + idx);
         const date = new Date(post.date);
         const formattedDate = date.toLocaleString("ko-KR", {
           year: "2-digit",
@@ -91,10 +143,10 @@
         }).replace(/\./g, '-').replace(/\s/g, '');
     
         const el = document.createElement("div");
-        el.className = "flex items-center border-b border-[#3a3b3e] py-2 px-4 text-sm text-gray-300";
+        el.className = "flex items-center py-2 px-4 text-sm text-gray-300";
     
         el.innerHTML = `
-          <div class="w-1/6 text-left">${post.number}</div>
+          <div class="w-1/6 text-left">${postNumber}</div>
           <div class="w-3/6 text-center truncate">
             <a href="board_view.html?index=${post.index}" class="hover:underline text-white">${post.title}</a>
           </div>
@@ -106,6 +158,7 @@
     
       renderPagination();
     }
+    
     
     
 
@@ -160,19 +213,58 @@
     
     
 
+    function renderFilteredPosts(filteredPosts) {
+      postList.innerHTML = "";
+    
+      filteredPosts.forEach(({ post, index }, i) => {
+        const postNumber = filteredPosts.length - i;
+        const date = new Date(post.date);
+        const formattedDate = date.toLocaleString("ko-KR", {
+          year: "2-digit", month: "2-digit", day: "2-digit",
+          hour: "2-digit", minute: "2-digit"
+        }).replace(/\./g, '-').replace(/\s/g, '');
+    
+        const el = document.createElement("div");
+        el.className = "flex items-center py-2 px-4 text-sm text-gray-300";
+    
+        el.innerHTML = `
+          <div class="w-1/6 text-left">${post.number}</div>
+          <div class="w-3/6 text-center truncate">
+            <a href="board_view.html?index=${post.index}" class="hover:underline text-white">${post.title}</a>
+          </div>
+          <div class="w-2/6 text-right">${formattedDate}</div>
+        `;
+    
+        postList.appendChild(el);
+      });
+    
+      // 검색 시에는 페이지네이션 숨김
+      document.getElementById("pagination").style.display = "none";
+    }
     
 
 
     // 🔍 검색 기능
     document.getElementById("searchBtn").addEventListener("click", () => {
       const keyword = document.getElementById("searchInput").value.toLowerCase();
-
+    
       const filtered = posts
-        .map((post, index) => ({ post, index })) // ← 여기서 index 유지
+        .map((post, index) => ({ post, index }))
         .filter(({ post }) => post.title.toLowerCase().includes(keyword));
-
-      renderPosts(filtered);
+    
+      if (keyword === "") {
+        // 검색어가 없으면 전체 다시 보여주기
+        document.getElementById("pagination").style.display = "flex";
+        renderPosts(currentPage);
+      } else {
+        renderFilteredPosts(filtered);
+      }
     });
+    
+
+
+
+     
 
   </script>
   

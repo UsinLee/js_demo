@@ -6,19 +6,31 @@
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-[#232427] text-[#e5e7eb]">
+  <!-- ⬇ 로그인 상태 & 로그아웃 버튼 -->
+  <div class="max-w-3xl mx-auto mt-6 px-4">
+    <div class="flex justify-end items-center gap-4">
+      <div id="loginStatus" class="text-sm text-gray-400"></div>
+      <button id="logoutBtn" class="text-sm text-red-400 hover:underline hidden">로그아웃</button>
+    </div>
+  </div>
 
   <main class="max-w-3xl mx-auto mt-10 p-6 bg-[#2b2c30] rounded-xl shadow space-y-6">
     <h1 id="postTitle" class="text-2xl font-bold"></h1>
+    <p id="postAuthor" class="text-sm text-gray-400"></p>
+    <!-- 작성일 & 로그인 상태 한 줄에 배치 -->
     <p id="postDate" class="text-sm text-gray-400"></p>
     <hr class="border-[#3a3b3e]" />
     <p id="postContent" class="text-base leading-relaxed whitespace-pre-wrap"></p>
+
+    <div id="loginStatus" class="text-sm text-right text-gray-400 px-4 mt-4"></div>
+
 
     <div id="fileBox" class="text-sm text-gray-400 mt-3"></div>
 
     <div class="text-right">
       <a href="index.html" class="text-[#10a37f] hover:underline text-sm">← 돌아가기</a>
-      <a id="editBtn" class="text-sm text-blue-400 hover:underline cursor-pointer">✏️ 수정</a>
-      <button id="deleteBtn" class="text-sm text-red-400 hover:underline">🗑 삭제</button>
+      <a id="editBtn" class="text-sm text-blue-400 hover:underline cursor-pointer hidden">✏️ 수정</a>
+      <button id="deleteBtn" class="text-sm text-red-400 hover:underline hidden">🗑 삭제</button>
     </div>
   </main>
 
@@ -58,6 +70,36 @@
     const commentInput = document.getElementById("commentInput");
     const commentSubmit = document.getElementById("commentSubmit");
 
+    const userInfo = JSON.parse(localStorage.getItem("currentUser"));
+    const loginStatus = document.getElementById("loginStatus");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+
+   
+
+    if (userInfo) {
+      loginStatus.textContent = `👋 ${userInfo.username}님`;
+      logoutBtn.classList.remove("hidden");
+    } else {
+      // 로그인 상태가 아닐 때 링크 만들기 (login.html?redirect=현재페이지주소)
+      const currentUrl = encodeURIComponent(location.href);
+      loginStatus.innerHTML = `<a href="login.html?redirect=${encodeURIComponent(location.href)}" class="text-blue-400 hover:underline">🔐 로그인</a>`;
+      logoutBtn.classList.add("hidden");
+
+    }
+
+
+    
+    logoutBtn.addEventListener("click", () => {
+      if (confirm("로그아웃 하시겠습니까?")) {
+        localStorage.removeItem("currentUser");
+        alert("로그아웃 되었습니다.");
+        location.reload();
+      }
+    });
+
+
     commentInput.addEventListener("input", () => {
       const len = commentInput.value.length;
       document.getElementById("charCount").textContent = `${len} / 200자`;
@@ -69,9 +111,19 @@
       const post = posts[index]; // 최신글이 위로 쌓였으므로 역순
 
       document.getElementById("postTitle").textContent = post.title;
+      document.getElementById("postAuthor").textContent = `작성자: ${post.author}`;
       document.getElementById("postDate").textContent = `작성일: ${post.date}`;
       document.getElementById("postContent").textContent = post.content;
       document.getElementById("editBtn").href = `board_edit.html?index=${index}`;
+
+      // ✅ 수정/삭제 버튼 권한 제어
+      if (currentUser && currentUser.username === post.author) {
+        document.getElementById("editBtn").classList.remove("hidden");
+        document.getElementById("deleteBtn").classList.remove("hidden");
+      } else {
+        document.getElementById("editBtn").classList.add("hidden");
+        document.getElementById("deleteBtn").classList.add("hidden");
+      }
 
       // 첨부파일 표시
       if (post.fileName) {
@@ -90,7 +142,7 @@
     
         localStorage.setItem("posts", JSON.stringify(posts));
         alert("삭제되었습니다.");
-        window.location.href = "index.html";
+        window.location.replace("index.html");
     });
 
 
@@ -101,14 +153,22 @@
       comments.forEach((comment, idx) => {
         const el = document.createElement("div");
         el.className = "bg-[#3a3b3e] p-3 rounded text-sm text-gray-200 space-y-1";
+
+        // ✅ 게시글 작성자인지 확인
+        const isPostAuthor = comment.author === posts[index].author;
     
         el.innerHTML = `
           <div class="view-mode">
-            <p class="comment-content">${comment.content}</p>
-            <p class="text-xs text-gray-400">${comment.date}</p>
+            <p class="comment-content ${comment.deleted ? 'italic text-gray-500' : ''}">
+              ${comment.content}
+            </p>
+            <p class="text-xs text-gray-400">
+              작성자: ${comment.author}
+              ${isPostAuthor ? '<span class="ml-1 px-2 py-[1px] text-[11px] bg-gray-600 text-white rounded">작성자</span>' : ''}
+              | ${comment.date}
+            </p>
             <div class="flex gap-2 justify-end text-xs text-gray-400">
               <button class="reply-btn underline" data-index="${idx}">답글</button>
-              <button class="edit-btn underline" data-index="${idx}">수정</button>
               <button class="delete-btn underline text-red-400" data-index="${idx}">삭제</button>
             </div>
           </div>
@@ -119,134 +179,126 @@
     
         const replyContainer = el.querySelector(".replies");
         (comment.replies || []).forEach(reply => {
+          const isPostAuthor = reply.author === posts[index].author;
+        
           const replyEl = document.createElement("div");
           replyEl.className = "bg-[#2f3033] p-2 rounded text-xs text-gray-300";
           replyEl.innerHTML = `
             <p>${reply.content}</p>
-            <p class="text-[11px] text-gray-400 mt-1">${reply.date}</p>
+            <p class="text-[11px] text-gray-400 mt-1">
+              작성자: ${reply.author}
+              ${isPostAuthor ? '<span class="ml-1 px-1 py-[1px] bg-gray-600 text-white rounded text-[10px]">작성자</span>' : ''}
+              | ${reply.date}
+            </p>
           `;
           replyContainer.appendChild(replyEl);
         });
+        
     
-        el.querySelector(".reply-btn").addEventListener("click", () => {
+        const replyBtn = el.querySelector(".reply-btn");
+
+        replyBtn.addEventListener("click", () => {
+          const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+          if (!currentUser) {
+            alert("답글 작성은 로그인 후 이용 가능합니다.");
+            window.location.href = `login.html?redirect=${encodeURIComponent(location.href)}`;
+            return;
+          }
+
+          // ✅ 중복 생성 방지
           if (el.querySelector(".reply-form")) return;
-    
+
+          // ✅ 답글 버튼 숨기기
+          replyBtn.classList.add("hidden");
+
           const form = document.createElement("div");
           form.className = "reply-form mt-2 space-y-1";
-    
+
           form.innerHTML = `
             <input type="text" maxlength="200"
               class="w-full px-2 py-1 bg-[#40414f] text-white border border-[#565869] rounded"
               placeholder="답글을 입력하세요" />
             <div class="flex justify-between items-center">
               <p class="text-xs text-gray-400" id="replyCharCount">0 / 200자</p>
-              <button class="px-3 py-1 bg-[#10a37f] text-white rounded text-xs">등록</button>
+              <div class="flex gap-2">
+                <button class="submit-btn px-3 py-1 bg-[#10a37f] text-white rounded text-xs">등록</button>
+                <button class="cancel-btn px-3 py-1 bg-[#565869] text-white rounded text-xs">취소</button>
+              </div>
             </div>
           `;
-    
+
           replyContainer.appendChild(form);
-    
+
           const input = form.querySelector("input");
-          const btn = form.querySelector("button");
           const count = form.querySelector("#replyCharCount");
-    
+          const submitBtn = form.querySelector(".submit-btn");
+          const cancelBtn = form.querySelector(".cancel-btn");
+
           input.addEventListener("input", () => {
             count.textContent = `${input.value.length} / 200자`;
-            if (input.value.length > 180) {
-              count.classList.add("text-red-400");
-            } else {
-              count.classList.remove("text-red-400");
-            }
+            count.classList.toggle("text-red-400", input.value.length > 180);
           });
-    
+
           input.focus();
-    
-          btn.addEventListener("click", () => {
+
+          // ✅ 등록 버튼
+          submitBtn.addEventListener("click", () => {
             const text = input.value.trim();
             if (!text) return;
-    
+
             const reply = {
               content: text,
               date: new Date().toLocaleString("ko-KR", {
                 year: "2-digit", month: "2-digit", day: "2-digit",
                 hour: "2-digit", minute: "2-digit"
-              })
+              }),
+              author: currentUser.username
             };
-    
+
             if (!posts[index].comments[idx].replies)
               posts[index].comments[idx].replies = [];
-    
+
             posts[index].comments[idx].replies.push(reply);
             localStorage.setItem("posts", JSON.stringify(posts));
             renderComments(posts[index].comments);
           });
-        });
-    
-        el.querySelector(".edit-btn").addEventListener("click", (e) => {
-          const parent = e.target.closest(".view-mode");
-          const comment = posts[index].comments[idx];
-    
-          parent.innerHTML = `
-            <textarea
-              id="editArea"
-              maxlength="200"
-              class="w-full p-2 rounded bg-[#40414f] text-white border border-[#565869]"
-            >${comment.content}</textarea>
-            <p id="editCharCount" class="text-xs text-right text-gray-400 mt-1">0 / 200자</p>
-            <div class="flex justify-end gap-2 mt-2">
-              <button class="save-btn text-green-400 underline" data-index="${idx}">저장</button>
-              <button class="cancel-btn text-gray-400 underline" data-index="${idx}">취소</button>
-            </div>
-          `;
-    
-          const textarea = parent.querySelector("#editArea");
-          const counter = parent.querySelector("#editCharCount");
-          const saveBtn = parent.querySelector(".save-btn");
-          const cancelBtn = parent.querySelector(".cancel-btn");
-    
-          textarea.addEventListener("input", () => {
-            const len = textarea.value.length;
-            counter.textContent = `${len} / 200자`;
-            if (len > 180) {
-              counter.classList.add("text-red-400");
-            } else {
-              counter.classList.remove("text-red-400");
-            }
-          });
-    
-          textarea.dispatchEvent(new Event("input"));
-          textarea.focus();
-    
-          saveBtn.addEventListener("click", () => {
-            const newContent = textarea.value.trim();
-            if (!newContent) return;
-    
-            posts[index].comments[idx].content = newContent;
-            posts[index].comments[idx].date = new Date().toLocaleString("ko-KR", {
-              year: "2-digit", month: "2-digit", day: "2-digit",
-              hour: "2-digit", minute: "2-digit"
-            });
-    
-            localStorage.setItem("posts", JSON.stringify(posts));
-            renderComments(posts[index].comments);
-          });
-    
+
+          // ✅ 취소 버튼
           cancelBtn.addEventListener("click", () => {
-            renderComments(posts[index].comments);
+            form.remove();
+            replyBtn.classList.remove("hidden"); // 답글 버튼 다시 보이기
           });
         });
+
     
         el.querySelector(".delete-btn").addEventListener("click", () => {
-          posts[index].comments.splice(idx, 1);
+          const comment = posts[index].comments[idx];
+        
+          if (comment.author !== currentUser?.username) {
+            alert("본인만 댓글을 삭제할 수 있습니다.");
+            return;
+          }
+        
+          if (!confirm("댓글을 삭제하시겠습니까?")) return;
+        
+          comment.content = "삭제된 댓글입니다.";
+          comment.deleted = true; // ⛳ 선택적으로 표시용 플래그
           localStorage.setItem("posts", JSON.stringify(posts));
           renderComments(posts[index].comments);
-        });
+        });        
       });
     }
     
     
 
 commentSubmit.addEventListener("click", () => {
+  const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+  if (!currentUser) {
+    alert("댓글 작성은 로그인 후 이용 가능합니다.");
+    window.location.href = `login.html?redirect=${encodeURIComponent(location.href)}`;
+    return;
+  }
+
   const content = commentInput.value.trim();
   if (!content) return;
 
@@ -259,7 +311,11 @@ commentSubmit.addEventListener("click", () => {
   const post = posts[index];
 
   if (!post.comments) post.comments = [];
-  post.comments.push({ content, date });
+  post.comments.push({ 
+    content, 
+    date,
+    author: currentUser.username // ✅ 댓글 작성자
+  });
 
   localStorage.setItem("posts", JSON.stringify(posts));
   commentInput.value = "";

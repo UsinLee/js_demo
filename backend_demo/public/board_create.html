@@ -9,7 +9,7 @@
 <body class="bg-[#232427] text-[#e5e7eb]">
 
   <!-- 제목 -->
-  <header class="py-10 flex justify-center border-b border-[#2e2f33]">
+  <header class="py-10 flex justify-center">
     <h1 class="text-5xl font-bold">Board</h1>
   </header>
 
@@ -47,6 +47,13 @@
 
   <script>
     const button = document.querySelector("button");
+    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+
+    if (!currentUser) {
+      alert("로그인 후에 글을 작성할 수 있습니다.");
+      window.location.href = `login.html?redirect=${encodeURIComponent(location.href)}`;
+    }
+
 
     button.addEventListener("click", () => {
       const title = document.getElementById("title").value.trim();
@@ -60,6 +67,7 @@
         content,
         date: new Date().toISOString(),
         fileName: file ? file.name : "", // ✅ 파일명만 저장
+        author: currentUser.username // ✅ 작성자 저장
       };
 
       const existingPosts = JSON.parse(localStorage.getItem("posts") || "[]");
@@ -67,7 +75,8 @@
       localStorage.setItem("posts", JSON.stringify(existingPosts));
 
       alert("글이 등록되었습니다!");
-      window.location.href = "index.html";
+      window.location.replace(`board_view.html?index=0`);
+
     });
   </script>
 
