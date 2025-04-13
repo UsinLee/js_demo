@@ -2,64 +2,113 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>게시글 수정</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Board 수정 | CODE</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-[#232427] text-[#e5e7eb]">
 
-  <main class="max-w-3xl mx-auto mt-10 p-6 bg-[#2b2c30] rounded-xl shadow space-y-6">
-    <h1 class="text-2xl font-bold">게시글 수정</h1>
+  <!-- 제목 -->
+  <header class="py-10 flex justify-center">
+    <h1 class="text-5xl font-bold">게시글 수정</h1>
+  </header>
+
+  <!-- <main> 폼 구성
+      제목 입력 필드 (id="title")
+      내용 입력 필드 (id="content")
+      첨부파일 필드 (id="fileInput")
+      등록 버튼 (<button>)
+      사용자가 기존 게시글을 수정할 수 있도록 폼을 구성-->
+  <main class="max-w-3xl mx-auto mt-10 bg-[#2b2c30] p-6 rounded-xl shadow space-y-6">
 
     <div>
       <label for="title" class="block mb-2 text-sm font-semibold text-gray-300">제목</label>
-      <input id="title" type="text" class="w-full px-4 py-2 bg-[#40414f] text-white border border-[#565869] rounded" />
+      <input id="title" type="text" placeholder="제목을 입력하세요"
+             class="w-full px-4 py-2 bg-[#40414f] text-white border border-[#565869] rounded focus:outline-none focus:ring-2 focus:ring-[#10a37f]">
     </div>
 
     <div>
       <label for="content" class="block mb-2 text-sm font-semibold text-gray-300">내용</label>
-      <textarea id="content" rows="8" class="w-full px-4 py-2 bg-[#40414f] text-white border border-[#565869] rounded"></textarea>
+      <textarea id="content" rows="8" placeholder="내용을 입력하세요"
+                class="w-full px-4 py-2 bg-[#40414f] text-white border border-[#565869] rounded focus:outline-none focus:ring-2 focus:ring-[#10a37f]"></textarea>
     </div>
 
+    <div>
+      <label for="fileInput" class="block mb-2 text-sm font-semibold text-gray-300">첨부파일</label>
+      <input id="fileInput" type="file"
+             class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4
+                    file:rounded file:border-0 file:text-sm file:font-semibold
+                    file:bg-[#10a37f] file:text-white hover:file:bg-[#0d8f6d]" />
+      <p id="existingFile" class="text-sm text-gray-400 mt-2"></p>
+    </div>    
+
     <div class="text-right">
-      <button id="saveBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded">수정 완료</button>
+      <button class="bg-[#10a37f] hover:bg-[#0d8f6d] text-white font-semibold px-6 py-2 rounded">
+        수정 완료
+      </button>
     </div>
   </main>
 
   <script>
-    const params = new URLSearchParams(window.location.search);
-    const index = parseInt(params.get("index"));
-    const posts = JSON.parse(localStorage.getItem("posts") || "[]");
+    const button = document.querySelector("button");
+    /** 로그인 확인
+        로그인하지 않은 경우 로그인 페이지로 강제 이동**/
+    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
 
-    if (isNaN(index) || index < 0 || index >= posts.length) {
-      alert("존재하지 않는 게시글입니다.");
-      window.location.href = "index.html";
+    if (!currentUser) {
+      alert("로그인 후에 수정할 수 있습니다.");
+      window.location.href = `login.html?redirect=${encodeURIComponent(location.href)}`;
     }
 
-    const post = posts[index];
+    /** 게시글 index를 URL로 전달
+        수정할 게시글의 index 값을 URL 쿼리에서 받아옴
+        예: board_edit.html?index=5**/
+    const params = new URLSearchParams(location.search);
+    const postIndex = parseInt(params.get("index"), 10);
 
-    // 기존 내용 채워넣기
+    /** 기존 게시글 정보 불러오기 → input에 채우기
+        사용자가 수정 중인 글의 내용을 입력창에 미리 표시
+        첨부파일은 이미 업로드된 파일명을 유지하거나 새로 업로드하면 교체됨**/
+    const posts = JSON.parse(localStorage.getItem("posts") || "[]");
+    // 기존 게시글 정보 반영
+    const post = posts[postIndex];
     document.getElementById("title").value = post.title;
     document.getElementById("content").value = post.content;
 
-    // 수정 완료 버튼 이벤트
-    document.getElementById("saveBtn").addEventListener("click", () => {
-      const newTitle = document.getElementById("title").value.trim();
-      const newContent = document.getElementById("content").value.trim();
+    // 유효성 검사
+    if (isNaN(postIndex) || !posts[postIndex]) {
+      alert("잘못된 접근입니다.");
+      window.location.replace("index.html");
+    }
 
-      if (!newTitle || !newContent) return alert("제목과 내용을 모두 입력하세요.");
 
-      // 수정된 데이터 덮어쓰기
-      posts[index] = {
-        ...post,
-        title: newTitle,
-        content: newContent,
-        date: new Date().toISOString() // 수정한 시간으로 업데이트
+    if (post.fileName) {
+      document.getElementById("existingFile").textContent = `기존 첨부파일: ${post.fileName}`;
+    }
+
+    button.addEventListener("click", () => {
+      const title = document.getElementById("title").value.trim();
+      const content = document.getElementById("content").value.trim();
+      const file = document.getElementById("fileInput").files[0];
+
+      if (!title || !content) return alert("제목과 내용을 입력하세요.");
+
+      /** 게시글 수정(기존 위치(index)에 덮어쓰기)
+          기존 게시글의 순서를 바꾸지 않고 해당 위치(index)에 수정된 데이터만 저장**/
+      posts[postIndex] = {
+        ...post, // 기존 정보 유지 (작성자, 날짜 등)
+        title,
+        content,
+        fileName: file ? file.name : post.fileName // 새 파일이 있으면 교체, 없으면 기존 유지
       };
 
+      /** 수정 후 기존 게시글 보기로 이동
+          수정 후 첫 번째 게시글(최신글) 보기 화면으로 이동**/
       localStorage.setItem("posts", JSON.stringify(posts));
-      alert("수정이 완료되었습니다!");
-      window.location.href = `board_view.html?index=${index}`;
+      alert("게시글이 수정되었습니다!");
+      window.location.replace(`board_view.html?index=${postIndex}`);
     });
   </script>
+
 </body>
 </html>

@@ -6,7 +6,9 @@
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-[#232427] text-[#e5e7eb]">
-  <!-- ⬇ 로그인 상태 & 로그아웃 버튼 -->
+  <!-- 🔐 로그인 상태 및 로그아웃 버튼 표시 
+       로그인된 사용자의 이름을 표시하거나 로그인 링크를 보여줌
+       로그인 상태일 때만 로그아웃 버튼이 보이도록 설정됨 (hidden 클래스 제거)-->
   <div class="max-w-3xl mx-auto mt-6 px-4">
     <div class="flex justify-end items-center gap-4">
       <div id="loginStatus" class="text-sm text-gray-400"></div>
@@ -14,19 +16,21 @@
     </div>
   </div>
 
+  <!-- 📝 게시글 내용 표시 영역 
+       게시글 정보를 출력하는 영역
+       수정/삭제 버튼은 작성자 본인일 경우에만 보이도록 JavaScript에서 제어-->
   <main class="max-w-3xl mx-auto mt-10 p-6 bg-[#2b2c30] rounded-xl shadow space-y-6">
     <h1 id="postTitle" class="text-2xl font-bold"></h1>
     <p id="postAuthor" class="text-sm text-gray-400"></p>
-    <!-- 작성일 & 로그인 상태 한 줄에 배치 -->
     <p id="postDate" class="text-sm text-gray-400"></p>
     <hr class="border-[#3a3b3e]" />
     <p id="postContent" class="text-base leading-relaxed whitespace-pre-wrap"></p>
 
+    <!-- 로그인 상태 및 첨부파일 영역 -->
     <div id="loginStatus" class="text-sm text-right text-gray-400 px-4 mt-4"></div>
-
-
     <div id="fileBox" class="text-sm text-gray-400 mt-3"></div>
 
+    <!-- 게시글 편집 및 삭제 버튼 -->
     <div class="text-right">
       <a href="index.html" class="text-[#10a37f] hover:underline text-sm">← 돌아가기</a>
       <a id="editBtn" class="text-sm text-blue-400 hover:underline cursor-pointer hidden">✏️ 수정</a>
@@ -34,63 +38,48 @@
     </div>
   </main>
 
+  <!-- 💬 댓글& 대댓글 입력 영역 
+       댓글 목록을 #commentList에 동적으로 출력
+       댓글 입력 후 등록 버튼으로 새 댓글 추가-->
   <section class="max-w-3xl mx-auto mt-8 space-y-4">
     <h2 class="text-lg font-bold text-gray-300">💬 댓글</h2>
-  
-    <!-- 댓글 목록 -->
     <div id="commentList" class="space-y-2"></div>
-  
-    <!-- 댓글 입력 -->
     <div class="flex gap-2 mt-4">
-      <input
-        type="text"
-        id="commentInput"
-        maxlength="200"
-        placeholder="댓글을 입력하세요"
-        class="flex-grow px-4 py-2 bg-[#40414f] text-white border border-[#565869] rounded"
-      />
+      <input type="text" id="commentInput" maxlength="200" placeholder="댓글을 입력하세요" class="flex-grow px-4 py-2 bg-[#40414f] text-white border border-[#565869] rounded" />
       <p id="charCount" class="text-xs text-right text-gray-400">0 / 200자</p>
-      <button
-        id="commentSubmit"
-        class="px-4 py-2 bg-[#10a37f] text-white rounded hover:bg-[#0d8f6d]">
-        등록
-      </button>
+      <button id="commentSubmit" class="px-4 py-2 bg-[#10a37f] text-white rounded hover:bg-[#0d8f6d]">등록</button>
     </div>
   </section>
 
-
   <script>
-    // URL에서 index=값 읽기
+    // ✅ 게시글 index 파라미터 가져오기
     const params = new URLSearchParams(window.location.search);
     const index = parseInt(params.get("index"));
-    const posts = JSON.parse(localStorage.getItem("posts") || "[]");
-    
-    // 댓글 기능
+
+    // ✅ 데이터 불러오기
+    let posts = JSON.parse(localStorage.getItem("posts") || "[]");
+    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+
+    // ✅ DOM 요소 가져오기
     const commentList = document.getElementById("commentList");
     const commentInput = document.getElementById("commentInput");
     const commentSubmit = document.getElementById("commentSubmit");
-
-    const userInfo = JSON.parse(localStorage.getItem("currentUser"));
     const loginStatus = document.getElementById("loginStatus");
     const logoutBtn = document.getElementById("logoutBtn");
 
-    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-
-   
-
-    if (userInfo) {
-      loginStatus.textContent = `👋 ${userInfo.username}님`;
+    /** ✅ 로그인 상태 표시
+        로그인된 사용자는 인사말을, 비로그인 사용자는 로그인 링크를 표시**/
+    if (currentUser) {
+      loginStatus.textContent = `👋 ${currentUser.username}님`;
       logoutBtn.classList.remove("hidden");
     } else {
-      // 로그인 상태가 아닐 때 링크 만들기 (login.html?redirect=현재페이지주소)
       const currentUrl = encodeURIComponent(location.href);
-      loginStatus.innerHTML = `<a href="login.html?redirect=${encodeURIComponent(location.href)}" class="text-blue-400 hover:underline">🔐 로그인</a>`;
+      loginStatus.innerHTML = `<a href="login.html?redirect=${currentUrl}" class="text-blue-400 hover:underline">🔐 로그인</a>`;
       logoutBtn.classList.add("hidden");
-
     }
-
-
     
+    /** 로그아웃 처리
+        로그아웃 버튼 클릭 시 사용자 정보 삭제 후 새로고침**/
     logoutBtn.addEventListener("click", () => {
       if (confirm("로그아웃 하시겠습니까?")) {
         localStorage.removeItem("currentUser");
@@ -99,69 +88,71 @@
       }
     });
 
-
+    /** ✅ 댓글 글자 수 표시
+        댓글 입력창에 따라 실시간 글자 수를 표시**/ 
     commentInput.addEventListener("input", () => {
       const len = commentInput.value.length;
       document.getElementById("charCount").textContent = `${len} / 200자`;
     });
 
+    /** ✅ 게시글 표시
+        유효하지 않은 index인 경우 오류 메시지를 출력.
+        게시글 정보(title, author, content, date, file)를 렌더링.**/
     if (isNaN(index) || index < 0 || index >= posts.length) {
       document.body.innerHTML = "<p class='text-center mt-10 text-red-400'>존재하지 않는 게시글입니다.</p>";
     } else {
-      const post = posts[index]; // 최신글이 위로 쌓였으므로 역순
+      const post = posts[index];
 
       document.getElementById("postTitle").textContent = post.title;
       document.getElementById("postAuthor").textContent = `작성자: ${post.author}`;
       document.getElementById("postDate").textContent = `작성일: ${post.date}`;
       document.getElementById("postContent").textContent = post.content;
       document.getElementById("editBtn").href = `board_edit.html?index=${index}`;
-
-      // ✅ 수정/삭제 버튼 권한 제어
+      
+      /** 로그인한 사용자가 게시글 작성자일 경우 수정/삭제 버튼 표시**/
       if (currentUser && currentUser.username === post.author) {
         document.getElementById("editBtn").classList.remove("hidden");
         document.getElementById("deleteBtn").classList.remove("hidden");
-      } else {
-        document.getElementById("editBtn").classList.add("hidden");
-        document.getElementById("deleteBtn").classList.add("hidden");
       }
 
-      // 첨부파일 표시
       if (post.fileName) {
-        const fileBox = document.getElementById("fileBox");
-        fileBox.innerHTML = `📎 첨부파일: <span class="text-white">${post.fileName}</span>`;
+        document.getElementById("fileBox").innerHTML = `📎 첨부파일: <span class="text-white">${post.fileName}</span>`;
       }
     }
 
-    // 삭제 버튼 클릭 시
-    document.getElementById("deleteBtn").addEventListener("click", () => {
-        if (!confirm("정말로 삭제하시겠습니까?")) return;
-    
-        const posts = JSON.parse(localStorage.getItem("posts") || "[]");
-    
-        posts.splice(index, 1); // 해당 index의 게시글 삭제
-    
-        localStorage.setItem("posts", JSON.stringify(posts));
-        alert("삭제되었습니다.");
-        window.location.replace("index.html");
+    /** ✅ 게시글 삭제 기능
+        삭제 버튼 클릭 시 localStorage에서 게시글 제거 및 메인 페이지로 이동**/
+    const deleteBtn = document.getElementById("deleteBtn");
+    deleteBtn.addEventListener("click", () => {
+      if (!confirm("정말로 삭제하시겠습니까?")) return;
+      posts.splice(index, 1);
+      localStorage.setItem("posts", JSON.stringify(posts));
+      alert("삭제되었습니다.");
+      window.location.replace("index.html");
     });
 
-
-
+    /** ✅ 댓글 렌더링 함수
+        게시글에 작성된 모든 댓글과 대댓글을 출력함.
+        각 댓글은 다음을 포함:
+        작성자 이름, 날짜, 삭제 여부
+        "작성자" 뱃지
+        "답글", "삭제" 버튼
+        댓글 내부의 기능:
+        ✅ 답글 버튼 클릭 시 대댓글 입력창 생성
+        ✅ 대댓글 등록 버튼 클릭 시 대댓글 replies에 추가
+        ✅ 취소 버튼 클릭 시 입력창 제거, 다시 답글 버튼 표시
+        ✅ 삭제 버튼 클릭 시 본인 댓글이면 "삭제된 댓글입니다."로 표시**/
     function renderComments(comments) {
       commentList.innerHTML = "";
-    
+
       comments.forEach((comment, idx) => {
         const el = document.createElement("div");
         el.className = "bg-[#3a3b3e] p-3 rounded text-sm text-gray-200 space-y-1";
 
-        // ✅ 게시글 작성자인지 확인
         const isPostAuthor = comment.author === posts[index].author;
-    
         el.innerHTML = `
           <div class="view-mode">
-            <p class="comment-content ${comment.deleted ? 'italic text-gray-500' : ''}">
-              ${comment.content}
-            </p>
+            <p class="comment-content ${comment.deleted ? 'italic text-gray-500' : ''}">${comment.content}</p>
             <p class="text-xs text-gray-400">
               작성자: ${comment.author}
               ${isPostAuthor ? '<span class="ml-1 px-2 py-[1px] text-[11px] bg-gray-600 text-white rounded">작성자</span>' : ''}
@@ -174,13 +165,12 @@
           </div>
           <div class="replies space-y-2 ml-4 mt-2"></div>
         `;
-    
+
         commentList.appendChild(el);
-    
+
         const replyContainer = el.querySelector(".replies");
         (comment.replies || []).forEach(reply => {
           const isPostAuthor = reply.author === posts[index].author;
-        
           const replyEl = document.createElement("div");
           replyEl.className = "bg-[#2f3033] p-2 rounded text-xs text-gray-300";
           replyEl.innerHTML = `
@@ -193,27 +183,20 @@
           `;
           replyContainer.appendChild(replyEl);
         });
-        
-    
-        const replyBtn = el.querySelector(".reply-btn");
 
+        const replyBtn = el.querySelector(".reply-btn");
         replyBtn.addEventListener("click", () => {
-          const currentUser = JSON.parse(localStorage.getItem("currentUser"));
           if (!currentUser) {
             alert("답글 작성은 로그인 후 이용 가능합니다.");
             window.location.href = `login.html?redirect=${encodeURIComponent(location.href)}`;
             return;
           }
 
-          // ✅ 중복 생성 방지
           if (el.querySelector(".reply-form")) return;
-
-          // ✅ 답글 버튼 숨기기
           replyBtn.classList.add("hidden");
 
           const form = document.createElement("div");
           form.className = "reply-form mt-2 space-y-1";
-
           form.innerHTML = `
             <input type="text" maxlength="200"
               class="w-full px-2 py-1 bg-[#40414f] text-white border border-[#565869] rounded"
@@ -241,7 +224,6 @@
 
           input.focus();
 
-          // ✅ 등록 버튼
           submitBtn.addEventListener("click", () => {
             const text = input.value.trim();
             if (!text) return;
@@ -263,70 +245,59 @@
             renderComments(posts[index].comments);
           });
 
-          // ✅ 취소 버튼
           cancelBtn.addEventListener("click", () => {
             form.remove();
-            replyBtn.classList.remove("hidden"); // 답글 버튼 다시 보이기
+            replyBtn.classList.remove("hidden");
           });
         });
 
-    
         el.querySelector(".delete-btn").addEventListener("click", () => {
           const comment = posts[index].comments[idx];
-        
           if (comment.author !== currentUser?.username) {
             alert("본인만 댓글을 삭제할 수 있습니다.");
             return;
           }
-        
           if (!confirm("댓글을 삭제하시겠습니까?")) return;
-        
           comment.content = "삭제된 댓글입니다.";
-          comment.deleted = true; // ⛳ 선택적으로 표시용 플래그
+          comment.deleted = true;
           localStorage.setItem("posts", JSON.stringify(posts));
           renderComments(posts[index].comments);
-        });        
+        });
       });
     }
-    
-    
 
-commentSubmit.addEventListener("click", () => {
-  const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-  if (!currentUser) {
-    alert("댓글 작성은 로그인 후 이용 가능합니다.");
-    window.location.href = `login.html?redirect=${encodeURIComponent(location.href)}`;
-    return;
-  }
+    /** ✅ 댓글 작성 이벤트
+        로그인 여부 확인
+        댓글을 현재 게시글의 comments 배열에 추가
+        localStorage에 저장 후 다시 렌더링**/
+    commentSubmit.addEventListener("click", () => {
+      if (!currentUser) {
+        alert("댓글 작성은 로그인 후 이용 가능합니다.");
+        window.location.href = `login.html?redirect=${encodeURIComponent(location.href)}`;
+        return;
+      }
 
-  const content = commentInput.value.trim();
-  if (!content) return;
+      const content = commentInput.value.trim();
+      if (!content) return;
 
-  const date = new Date().toLocaleString("ko-KR", {
-    year: "2-digit", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit"
-  });
+      const date = new Date().toLocaleString("ko-KR", {
+        year: "2-digit", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit"
+      });
 
-  const posts = JSON.parse(localStorage.getItem("posts") || "[]");
-  const post = posts[index];
+      const post = posts[index];
+      if (!post.comments) post.comments = [];
+      post.comments.push({ content, date, author: currentUser.username });
 
-  if (!post.comments) post.comments = [];
-  post.comments.push({ 
-    content, 
-    date,
-    author: currentUser.username // ✅ 댓글 작성자
-  });
+      localStorage.setItem("posts", JSON.stringify(posts));
+      commentInput.value = "";
+      renderComments(post.comments);
+    });
 
-  localStorage.setItem("posts", JSON.stringify(posts));
-  commentInput.value = "";
-  renderComments(post.comments);
-});
+    /** ✅ 페이지 로드 시 댓글 자동 렌더링
+        페이지가 로드되었을 때, 기존 댓글이 있다면 자동으로 출력**/
+    renderComments(posts[index].comments || []);
 
-// 페이지 로드 시 댓글 불러오기
-renderComments(posts[index].comments || []);
-
-  
-  
   </script>
 
 </body>
