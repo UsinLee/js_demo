@@ -1,41 +1,69 @@
-<!DOCTYPE html>
+<!-- HTML 문서임을 선언하는 <!DOCTYPE html>과 문서의 기본 언어를 한국어(ko)로 설정한 태그 -->
+<!DOCTYPE html> 
 <html lang="ko">
+<!-- head 내부에서 문자 인코딩 설정(UTF-8), 반응형 설정(viewport), 제목 설정, Tailwind CSS를 외부 CDN으로 불러오기 -->
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CODE</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
+<!-- 본문 배경색과 글자색을 설정하고, 전체 레이아웃을 가운데 정렬(mx-auto), 위쪽 여백(mt-10), 항목 간 여백(space-y-6)으로 정리 -->
 <body class="bg-[#232427] text-[#e5e7eb]">
   <div class="max-w-3xl mx-auto mt-10 space-y-6">
+    <!-- 이 부분은 페이지 상단에 제목을 표시하는 영역 -->
     <div class="board-wrapper">
-      <!-- 제목 -->
+      <!-- py-10은 위아래 패딩을 크게 줘서 제목과 다른 요소들 사이의 간격을 확보해주고,
+          flex justify-center items-center는 제목을 가로·세로 중앙 정렬해.-->
       <header class="py-10 flex justify-center items-center ">
-          <h1 class="text-5xl font-bold text-white">CODE</h1>
+          <!-- text-5xl font-bold는 텍스트 크기와 굵기, text-white는 색상을 하얗게 설정 -->
+          <h1 class="text-5xl font-bold">
+            <a href="index.html" class="text-white hover:underline">CODE</a>
+          </h1>
+          
+          
       </header>
     </div>
 
+    <!-- 이 부분은 로그인 상태를 표시하는 영역 -->  
     <div class="flex justify-end items-center gap-4">
       <!-- ✅ 로그인 상태 or 로그인 버튼 -->
+      <!-- loginStatus는 로그인 상태 메시지나 로그인 버튼을 동적으로 표시하기 위한 div-->
       <div id="loginStatus" class="text-sm text-gray-400"></div>
       <!-- 🔓 로그아웃 버튼 -->
+      <!--logoutBtn은 로그인한 경우 보이게 되는 로그아웃 버튼, 기본 상태에서는 hidden 클래스로 숨겨져 있음-->
       <button id="logoutBtn" class="text-sm text-red-400 hover:underline hidden">로그아웃</button>      
     </div>
     
-
-
+    <!--실제 게시글 리스트가 출력될 영역, JavaScript에서 이 div에 게시글 항목들을 innerHTML로 넣어줌-->
+    <!-- bg-[#2b2c30]은 배경색, rounded-xl은 모서리 둥글기, shadow는 그림자 효과.
+        mt-8은 상단 여백, mx-auto는 가운데 정렬-->
+    <!-- id="postList": 게시글 목록이 자바스크립트로 여기에 동적으로 삽입됨 -->
     <div id="postList" class="max-w-3xl mx-auto mt-8 bg-[#2b2c30] rounded-xl shadow pd-10">
       <!-- 게시글 목록 -->
     </div>
 
 
 
-
+    <!-- max-w-3xl: 최대 너비를 설정해서 페이지 가운데로 정렬되게.
+        mx-auto: 양쪽 마진을 자동으로, 즉 가운데 정렬.
+        mt-8: 위쪽 여백 (margin-top: 2rem)
+        flex justify-between items-center: 플렉스 박스로 만들어서 양쪽에 요소를 배치. 페이지 번호 + 글쓰기 버튼
+        px-2: 좌우에 약간의 패딩을 추가해서 살짝 여유 줌-->
     <div class="max-w-3xl mx-auto mt-8 flex justify-between items-center px-2">
       <!-- 페이지 번호 -->
       
       <!-- 게시글 작성 버튼 -->
+      <!-- ml-auto: margin-left: auto → 오른쪽 끝으로 정렬해줌-->
       <div class="ml-auto">
+          <!-- a 태그: 글쓰기 페이지로 이동하는 링크 (board_create.html)
+              버튼 스타일:
+              bg-[#10a37f]: 초록색 배경
+              hover:bg-[#0d8f6d]: 마우스 올렸을 때 어두운 초록
+              text-white: 글자색
+              px-4 py-2: 패딩 (버튼 사이즈)
+              rounded: 테두리 둥글게
+              text-sm font-medium: 작은 글씨, 중간 굵기-->
           <a href="/board_create.html" 
             class="bg-[#10a37f] hover:bg-[#0d8f6d] text-white px-4 py-2 rounded text-sm font-medium">
             글쓰기
@@ -43,26 +71,42 @@
         </div>
     </div>
 
+    <!-- max-w-3xl mx-auto mt-8 flex items-center gap-2 px-2
+        역시 중앙 정렬 (mx-auto) + 위 여백 (mt-8) + flex로 가로 배치
+        gap-2: input과 button 사이에 공간 줌
+        items-center: 세로 가운데 정렬-->
     <div class="max-w-3xl mx-auto mt-8 flex items-center gap-2 px-2">
       <!-- 검색 창 -->
+      <!-- id="searchInput": 자바스크립트로 접근하기 위한 ID
+          placeholder="제목 검색": 입력 칸에 흐릿하게 보이는 안내문
+          flex-grow: input이 가로로 가능한 최대 너비를 차지
+          bg-[#40414f]: 진한 회색 배경
+          text-white, border, rounded: 시각적으로 깔끔한 입력창-->
       <input
         id="searchInput"
         type="text"
         placeholder="제목 검색"
         class="flex-grow px-4 py-2 bg-[#40414f] text-white border border-[#565869] rounded"
       />
+      <!-- id="searchBtn": 자바스크립트에서 검색 기능에 연결
+          스타일은 위 글쓰기 버튼과 유사 (초록색 배경, 둥근 모서리, hover 효과)-->
       <button
         id="searchBtn"
         class="bg-[#10a37f] hover:bg-[#0d8f6d] text-white px-4 py-2 rounded">
         검색
       </button>
     </div>
-
+    <!-- id="pagination": 페이지 번호 버튼이 들어감 (JavaScript에서 renderPagination() 함수로 그려짐)-->
     <div id="pagination" class="flex justify-center mt-6 gap-2 text-sm text-gray-400"></div>
   </div>
 
   <script>
     const postList = document.getElementById('postList');
+
+    /**게시글 불러오기 및 초기화
+      localStorage에 저장된 게시글 데이터 로딩
+      각 게시물에 index (리스트에서 위치)와 number (게시물 번호)를 붙임
+      number는 최신 게시물이 가장 높은 번호가 되도록 총개수 - index로 설정**/
     const rawPosts = JSON.parse(localStorage.getItem("posts") || "[]");
     const posts = rawPosts.map((post, index) => ({
       ...post,
@@ -70,8 +114,10 @@
       number: rawPosts.length - index
     }));
 
+    /**한 페이지에 10개씩 보여주기**/
     const postsPerPage = 10;
-    //const totalPages = Math.ceil(posts.length / postsPerPage);
+
+    /**currentPage: 기본적으로 마지막 페이지 (최신 게시물이 있는 페이지)**/
     let currentPage = Math.ceil(posts.length / postsPerPage); // 기본은 최신글 페이지
 
     const userInfo = JSON.parse(localStorage.getItem("currentUser"));
@@ -87,18 +133,20 @@
       history.replaceState(null, "", "index.html");
     }
     
-    // index.html 내 script 태그 안에 추가해줘
+    /** 브라우저 캐시 문제 해결
+        사용자가 뒤로가기 했을 때 캐시된 페이지가 보이는 문제를 해결
+        강제로 새로고침해서 최신 게시물이 반영되도록 함**/
     window.addEventListener("pageshow", (event) => {
       const navType = performance.getEntriesByType("navigation")[0]?.type;
-
       if (event.persisted || navType === "back_forward") {
         // 브라우저 캐시로 돌아온 경우라면
         location.reload(); // 강제로 새로고침
       }
     });
 
-
-    
+    /** 로그인 상태 표시 + 로그아웃
+        로그인 여부에 따라 사용자 인사말 또는 로그인 링크 표시
+        로그아웃 버튼 누르면 localStorage 초기화 + 새로고침**/
     if (userInfo) {
       loginStatus.textContent = `👋 ${userInfo.username}님 환영합니다!`;
       logoutBtn.classList.remove("hidden"); // 로그아웃 버튼 보이기
@@ -122,6 +170,9 @@
     renderPosts(currentPage);
 
     // 🔥 공통 렌더링 함수
+    /** 게시물 렌더링 함수: renderPosts(page)
+        게시물을 가장 최근 게시물이 가장 높은 페이지에 위치하도록 역순 계산
+        각 게시물을 <div>로 만들어서 리스트에 추가**/
     function renderPosts(page = 1) {
       postList.innerHTML = "";
     
@@ -161,7 +212,10 @@
     
     
     
-
+    /** 페이지네이션 렌더링
+        ⏮ / ⏭	가장 처음/가장 마지막 페이지로 이동
+        ◀ / ▶	페이지 번호 묶음을 앞뒤로 이동 (ex. 10개씩 보여줌)
+        숫자 버튼	클릭 시 해당 페이지 게시물 보여줌**/
     function renderPagination() {
       const pagination = document.getElementById("pagination");
       pagination.innerHTML = "";
@@ -171,6 +225,16 @@
       const groupSize = 10; // 🔥 한 번에 보여줄 페이지 수
       const groupStart = Math.floor((currentPage - 1) / groupSize) * groupSize + 1;
       const groupEnd = Math.min(groupStart + groupSize - 1, totalPages);
+
+      // ⏮ 항상 오른쪽에 추가 → 마지막 페이지로 이동
+      const toLast = document.createElement("button");
+      toLast.textContent = "⏮";
+      toLast.className = "px-2 py-1 text-sm text-gray-400 hover:text-white";
+      toLast.addEventListener("click", () => {
+        currentPage = totalPages;
+        renderPosts(currentPage);
+      });
+      pagination.appendChild(toLast);
     
       // ◀ 왼쪽 화살표 → 다음 그룹 (오른쪽으로 이동)
       if (groupEnd < totalPages) {
@@ -209,6 +273,16 @@
         });
         pagination.appendChild(prev);
       }
+
+      // ⏭ 항상 왼쪽에 추가 → 첫 페이지로 이동
+      const toFirst = document.createElement("button");
+      toFirst.textContent = "⏭";
+      toFirst.className = "px-2 py-1 text-sm text-gray-400 hover:text-white";
+      toFirst.addEventListener("click", () => {
+        currentPage = 1;
+        renderPosts(currentPage);
+      });
+      pagination.appendChild(toFirst);
     }
     
     
@@ -244,7 +318,9 @@
     
 
 
-    // 🔍 검색 기능
+    /** 🔍 검색 기능
+        제목에 검색어가 포함된 게시글만 찾아서 새로 목록 렌더링
+        검색 시에는 페이지네이션 감춤**/
     document.getElementById("searchBtn").addEventListener("click", () => {
       const keyword = document.getElementById("searchInput").value.toLowerCase();
     
@@ -261,10 +337,6 @@
       }
     });
     
-
-
-
-     
 
   </script>
   

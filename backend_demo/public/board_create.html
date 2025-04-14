@@ -4,30 +4,40 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Board | CODE</title>
+  <!-- ✅ Tailwind CSS 적용 -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-[#232427] text-[#e5e7eb]">
 
-  <!-- 제목 -->
+  <!-- 페이지 상단 제목 "Board" 표시
+      Tailwind를 사용해 중앙 정렬 및 패딩 적용-->
   <header class="py-10 flex justify-center">
     <h1 class="text-5xl font-bold">Board</h1>
   </header>
 
-  <!-- 글쓰기 폼 -->
+  <!-- ✅ 게시글 작성 폼 
+      제목 입력 input: id="title" 
+      내용 입력 textarea: id="content"
+      파일 업로드 input: id="fileInput"
+      등록 버튼: <button>등록</button>
+      이 폼은 모두 사용자가 게시글을 작성하기 위한 입력 영역-->
   <main class="max-w-3xl mx-auto mt-10 bg-[#2b2c30] p-6 rounded-xl shadow space-y-6">
 
+    <!-- 제목 입력 -->
     <div>
       <label for="title" class="block mb-2 text-sm font-semibold text-gray-300">제목</label>
       <input id="title" type="text" placeholder="제목을 입력하세요"
              class="w-full px-4 py-2 bg-[#40414f] text-white border border-[#565869] rounded focus:outline-none focus:ring-2 focus:ring-[#10a37f]">
     </div>
 
+    <!-- 내용 입력 -->
     <div>
       <label for="content" class="block mb-2 text-sm font-semibold text-gray-300">내용</label>
       <textarea id="content" rows="8" placeholder="내용을 입력하세요"
                 class="w-full px-4 py-2 bg-[#40414f] text-white border border-[#565869] rounded focus:outline-none focus:ring-2 focus:ring-[#10a37f]"></textarea>
     </div>
 
+    <!-- 첨부파일 입력 -->
     <div>
       <label for="fileInput" class="block mb-2 text-sm font-semibold text-gray-300">첨부파일</label>
       <input id="fileInput" type="file"
@@ -36,47 +46,63 @@
                     file:bg-[#10a37f] file:text-white hover:file:bg-[#0d8f6d]" />
     </div>    
 
+    <!-- 등록 버튼 -->
     <div class="text-right">
       <button class="bg-[#10a37f] hover:bg-[#0d8f6d] text-white font-semibold px-6 py-2 rounded">
         등록
       </button>
     </div>
 
-
   </main>
 
   <script>
     const button = document.querySelector("button");
-    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
 
+    /** 로그인 여부 확인
+        로그인하지 않은 사용자는 게시글을 작성하지 못하도록 막고, 로그인 페이지로 리다이렉트
+        현재 페이지 주소를 redirect 파라미터로 같이 넘겨서 로그인 후 원래 페이지로 돌아오게 함**/
+    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+    // 🔐 로그인 확인: 로그인하지 않은 경우 로그인 페이지로 리디렉션
     if (!currentUser) {
       alert("로그인 후에 글을 작성할 수 있습니다.");
       window.location.href = `login.html?redirect=${encodeURIComponent(location.href)}`;
     }
 
-
+    /** 게시글 등록 이벤트 처리 **/
     button.addEventListener("click", () => {
+      /** 제목 / 내용 유효성 검사
+          둘 중 하나라도 비어 있으면 등록되지 않도록 경고창 표시**/
       const title = document.getElementById("title").value.trim();
       const content = document.getElementById("content").value.trim();
       const file = document.getElementById("fileInput").files[0]; // ✅ 파일 객체 가져오기
 
       if (!title || !content) return alert("제목과 내용을 입력하세요.");
 
+      /** ✅ 게시글 객체 생성
+          작성일은 ISO 문자열로 저장
+          작성자는 현재 로그인한 사용자 이름
+          첨부파일은 실제 파일 자체가 아닌 파일명만 저장**/
       const post = {
         title,
         content,
-        date: new Date().toISOString(),
-        fileName: file ? file.name : "", // ✅ 파일명만 저장
-        author: currentUser.username // ✅ 작성자 저장
+        date: new Date().toISOString(),       // 작성일
+        fileName: file ? file.name : "",       // 파일명 저장
+        author: currentUser.username           // 작성자 정보
       };
 
+      /** localStorage에 저장
+          기존 게시글 목록 불러와서 가장 앞에 새 게시글을 추가 (unshift)
+          posts라는 이름으로 다시 localStorage에 저장**/
       const existingPosts = JSON.parse(localStorage.getItem("posts") || "[]");
-      existingPosts.unshift(post);
+      existingPosts.unshift(post); // 최신 글이 앞으로 오도록
       localStorage.setItem("posts", JSON.stringify(existingPosts));
 
       alert("글이 등록되었습니다!");
-      window.location.replace(`board_view.html?index=0`);
 
+      /** 작성 후 이동
+          게시글 작성 후 첫 번째 게시글(최신글) 보기 화면으로 이동
+          단, 이후 기존 인덱스를 유지하는 구조로 변경된 경우에는 **작성된 게시물의 정확한 위치(index)**를 계산해 이동하도록 바뀔 수도 있음**/
+      window.location.replace(`board_view.html?index=0`);
     });
   </script>
 
