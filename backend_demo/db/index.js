@@ -1,7 +1,10 @@
-// db/index.js
-require("dotenv").config();
+// db.js
 const { Pool } = require("pg");
+const dotenv = require("dotenv");
 
+dotenv.config(); // .env 파일 로딩
+
+// PostgreSQL 연결 풀 생성
 const pool = new Pool({
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
@@ -10,8 +13,14 @@ const pool = new Pool({
   database: process.env.DB_DATABASE,
 });
 
-pool.connect()
-  .then(() => console.log("✅ PostgreSQL 연결 성공"))
-  .catch((err) => console.error("❌ PostgreSQL 연결 실패:", err));
+// 연결 확인 함수
+pool.connect((err, client, release) => {
+  if (err) {
+    return console.error("❌ DB 연결 실패", err.stack);
+  }
+  console.log("✅ PostgreSQL 연결 성공");
+  release(); // 연결 해제
+});
 
 module.exports = pool;
+

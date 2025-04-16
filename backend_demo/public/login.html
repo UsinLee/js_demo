@@ -45,44 +45,54 @@
   </main>
 
   <script>
-    /** 버튼 클릭 이벤트 리스너 등록
-        로그인 버튼 클릭 시 이벤트 실행**/
     const btn = document.getElementById("loginBtn");
-
-    btn.addEventListener("click", () => {
-      /** 입력값 가져오기, 사용자 조회 & 로그인 실패 처리
-          localStorage에서 사용자 목록 불러오기
-          해당 사용자 정보가 일치하는지 확인
-          없으면 오류 메시지 표시**/
+  
+    btn.addEventListener("click", async () => {
       const username = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value.trim();
       const msg = document.getElementById("msg");
-      // 🔍 로컬 스토리지에 저장된 사용자 목록에서 사용자 찾기
-      const users = JSON.parse(localStorage.getItem("users") || "[]");
-      const user = users.find(user => user.username === username && user.password === password);
-
-      // ❌ 일치하는 계정이 없을 경우
-      if (!user) {
-        msg.textContent = "아이디 또는 비밀번호가 일치하지 않습니다.";
+  
+      if (!username || !password) {
+        msg.textContent = "아이디와 비밀번호를 입력해주세요.";
         return;
       }
-
-      /** ✅ 로그인 성공 시 현재 사용자 정보 저장
-         로그인에 성공하면 현재 로그인한 사용자 정보를 currentUser로 저장**/
-      localStorage.setItem("currentUser", JSON.stringify(user));
-      alert(`${user.username}님, 환영합니다!`);
-
-      /** 🔁 리다이렉트 처리
-          로그인 전에 접근했던 페이지가 있다면 그곳으로 리다이렉트
-          아니면 기본적으로 메인 페이지로 이동**/
-      const redirectUrl = new URLSearchParams(location.search).get("redirect");
-      if (redirectUrl) {
-        window.location.href = decodeURIComponent(redirectUrl);
-      } else {
-        window.location.href = "index.html";
+  
+      try {
+        const res = await fetch("http://localhost:4000/users/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ username, password })
+        });
+  
+        const data = await res.json();
+  
+        if (res.ok) {
+          // ✅ 사용자 정보 + 토큰 저장
+          localStorage.setItem("currentUser", JSON.stringify({ username }));
+          localStorage.setItem("token", data.token); // JWT 토큰 저장
+  
+          alert(`${username}님, 환영합니다!`);
+  
+          // ✅ redirect 있으면 이동
+          const redirectUrl = new URLSearchParams(location.search).get("redirect");
+          if (redirectUrl) {
+            window.location.href = decodeURIComponent(redirectUrl);
+          } else {
+            window.location.href = "index.html";
+          }
+        } else {
+          msg.textContent = data.message || "로그인에 실패했습니다.";
+        }
+      } catch (error) {
+        console.error("로그인 오류:", error);
+        msg.textContent = "서버와의 연결에 실패했습니다.";
       }
     });
   </script>
+  
+  
 
 </body>
 </html>
