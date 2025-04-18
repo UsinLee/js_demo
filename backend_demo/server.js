@@ -21,6 +21,9 @@ app.use("/users", userRoutes);
 const postsRouter = require('./routes/posts');
 app.use('/posts', postsRouter); // http://localhost:포트/posts/create
 
+const commentRoutes = require("./routes/comments");
+app.use("/comments", commentRoutes);
+
 
 // 테스트 라우트
 app.get("/api/ping", (req, res) => {

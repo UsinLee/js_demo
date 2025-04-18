@@ -70,8 +70,11 @@
   
         if (res.ok) {
           // ✅ 사용자 정보 + 토큰 저장
-          localStorage.setItem("currentUser", JSON.stringify({ username }));
-          localStorage.setItem("token", data.token); // JWT 토큰 저장
+          localStorage.setItem("currentUser", JSON.stringify({
+            id: data.user.id,
+            username: data.user.username,
+            token: data.token
+          }));// JWT 토큰 저장
   
           alert(`${username}님, 환영합니다!`);
   

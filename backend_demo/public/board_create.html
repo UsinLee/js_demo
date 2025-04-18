@@ -62,41 +62,40 @@
         로그인하지 않은 사용자는 게시글을 작성하지 못하도록 막고, 로그인 페이지로 리다이렉트
         현재 페이지 주소를 redirect 파라미터로 같이 넘겨서 로그인 후 원래 페이지로 돌아오게 함**/
     const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+    const token = currentUser?.token;
     // 🔐 로그인 확인: 로그인하지 않은 경우 로그인 페이지로 리디렉션
-    if (!currentUser) {
+    if (!currentUser || !currentUser.token) {
       alert("로그인 후에 글을 작성할 수 있습니다.");
+      localStorage.removeItem("currentUser");
       window.location.href = `login.html?redirect=${encodeURIComponent(location.href)}`;
     }
-
-    // 게시글 등록 버튼 클릭 시
-    button.addEventListener("click", async () => {
+    
+    button.addEventListener("click", () => {
       const title = document.getElementById("title").value.trim();
       const content = document.getElementById("content").value.trim();
-      const file = document.getElementById("fileInput").files[0];
-      const token = JSON.parse(localStorage.getItem("token")); // JWT 토큰을 localStorage에 저장해두었다면
-
+      const fileInput = document.getElementById("fileInput").files[0];
+    
       if (!title || !content) return alert("제목과 내용을 입력하세요.");
-
-      const res = await fetch("http://localhost:4000/posts", {
+    
+      const fileName = fileInput ? fileInput.name : "";
+    
+      fetch("http://localhost:4000/posts", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({
-          title,
-          content,
-          fileName: file ? file.name : ""
+        body: JSON.stringify({ title, content, fileName })
+      })
+        .then(res => res.json())
+        .then(data => {
+          alert("게시글이 등록되었습니다!");
+          window.location.href = "index.html?newPost=1"; // 최신 페이지로 이동
         })
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        alert("글이 등록되었습니다!");
-        window.location.href = "index.html";
-      } else {
-        alert(`오류: ${data.message}`);
-      }
+        .catch(err => {
+          console.error("게시글 등록 실패:", err);
+          alert("오류가 발생했습니다.");
+        });
     });
   </script>
 
