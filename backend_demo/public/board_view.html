@@ -57,7 +57,6 @@
     const index = parseInt(params.get("index"));
 
     // ✅ 데이터 불러오기
-    let posts = JSON.parse(localStorage.getItem("posts") || "[]");
     const currentUser = JSON.parse(localStorage.getItem("currentUser"));
 
     // ✅ DOM 요소 가져오기
@@ -98,38 +97,56 @@
     /** ✅ 게시글 표시
         유효하지 않은 index인 경우 오류 메시지를 출력.
         게시글 정보(title, author, content, date, file)를 렌더링.**/
-    if (isNaN(index) || index < 0 || index >= posts.length) {
-      document.body.innerHTML = "<p class='text-center mt-10 text-red-400'>존재하지 않는 게시글입니다.</p>";
-    } else {
-      const post = posts[index];
+    const postId = new URLSearchParams(location.search).get("index");
 
-      document.getElementById("postTitle").textContent = post.title;
-      document.getElementById("postAuthor").textContent = `작성자: ${post.author}`;
-      document.getElementById("postDate").textContent = `작성일: ${post.date}`;
-      document.getElementById("postContent").textContent = post.content;
-      document.getElementById("editBtn").href = `board_edit.html?index=${index}`;
-      
-      /** 로그인한 사용자가 게시글 작성자일 경우 수정/삭제 버튼 표시**/
-      if (currentUser && currentUser.username === post.author) {
-        document.getElementById("editBtn").classList.remove("hidden");
-        document.getElementById("deleteBtn").classList.remove("hidden");
-      }
-
-      if (post.fileName) {
-        document.getElementById("fileBox").innerHTML = `📎 첨부파일: <span class="text-white">${post.fileName}</span>`;
-      }
-    }
+    fetch(`/posts/${postId}`)
+      .then(res => {
+        if (!res.ok) throw new Error("게시글을 불러올 수 없습니다.");
+        return res.json();
+      })
+      .then(post => {
+        document.getElementById("postTitle").textContent = post.title;
+        document.getElementById("postAuthor").textContent = `작성자: ${post.author}`;
+        document.getElementById("postDate").textContent = `작성일: ${post.date}`;
+        document.getElementById("postContent").textContent = post.content;
+    
+        if (post.file_name) {
+          document.getElementById("fileBox").innerHTML =
+            `📎 첨부파일: <span class="text-white">${post.file_name}</span>`;
+        }
+    
+        const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+        if (currentUser?.username === post.author) {
+          document.getElementById("editBtn").classList.remove("hidden");
+          document.getElementById("deleteBtn").classList.remove("hidden");
+        }
+      })
+      .catch(err => {
+        document.body.innerHTML = "<p class='text-center mt-10 text-red-400'>존재하지 않는 게시글입니다.</p>";
+      });
+        
 
     /** ✅ 게시글 삭제 기능
         삭제 버튼 클릭 시 localStorage에서 게시글 제거 및 메인 페이지로 이동**/
-    const deleteBtn = document.getElementById("deleteBtn");
-    deleteBtn.addEventListener("click", () => {
+    document.getElementById("deleteBtn").addEventListener("click", () => {
       if (!confirm("정말로 삭제하시겠습니까?")) return;
-      posts.splice(index, 1);
-      localStorage.setItem("posts", JSON.stringify(posts));
-      alert("삭제되었습니다.");
-      window.location.replace("index.html");
+    
+      const token = localStorage.getItem("token");
+    
+      fetch(`/posts/${postId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+        .then(res => res.json())
+        .then(data => {
+          alert(data.message);
+          window.location.href = "index.html";
+        })
+        .catch(() => alert("삭제 중 오류 발생"));
     });
+        
 
     /** ✅ 댓글 렌더링 함수
         게시글에 작성된 모든 댓글과 대댓글을 출력함.
@@ -271,32 +288,38 @@
         댓글을 현재 게시글의 comments 배열에 추가
         localStorage에 저장 후 다시 렌더링**/
     commentSubmit.addEventListener("click", () => {
-      if (!currentUser) {
-        alert("댓글 작성은 로그인 후 이용 가능합니다.");
-        window.location.href = `login.html?redirect=${encodeURIComponent(location.href)}`;
-        return;
-      }
-
       const content = commentInput.value.trim();
       if (!content) return;
-
-      const date = new Date().toLocaleString("ko-KR", {
-        year: "2-digit", month: "2-digit", day: "2-digit",
-        hour: "2-digit", minute: "2-digit"
-      });
-
-      const post = posts[index];
-      if (!post.comments) post.comments = [];
-      post.comments.push({ content, date, author: currentUser.username });
-
-      localStorage.setItem("posts", JSON.stringify(posts));
-      commentInput.value = "";
-      renderComments(post.comments);
+    
+      const token = localStorage.getItem("token");
+    
+      fetch(`/posts/${postId}/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ content })
+      })
+        .then(res => res.json())
+        .then(() => {
+          commentInput.value = "";
+          loadComments();
+        });
     });
+        
 
     /** ✅ 페이지 로드 시 댓글 자동 렌더링
         페이지가 로드되었을 때, 기존 댓글이 있다면 자동으로 출력**/
-    renderComments(posts[index].comments || []);
+    function loadComments() {
+      fetch(`/posts/${postId}/comments`)
+        .then(res => res.json())
+        .then(comments => renderComments(comments));
+    }
+    
+    // 마지막에 호출
+    loadComments();
+        
 
   </script>
 

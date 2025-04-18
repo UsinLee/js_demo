@@ -99,246 +99,197 @@
     <!-- id="pagination": 페이지 번호 버튼이 들어감 (JavaScript에서 renderPagination() 함수로 그려짐)-->
     <div id="pagination" class="flex justify-center mt-6 gap-2 text-sm text-gray-400"></div>
   </div>
-
+  
   <script>
     const postList = document.getElementById('postList');
-
-    /**게시글 불러오기 및 초기화
-      localStorage에 저장된 게시글 데이터 로딩
-      각 게시물에 index (리스트에서 위치)와 number (게시물 번호)를 붙임
-      number는 최신 게시물이 가장 높은 번호가 되도록 총개수 - index로 설정**/
-    const rawPosts = JSON.parse(localStorage.getItem("posts") || "[]");
-    const posts = rawPosts.map((post, index) => ({
-      ...post,
-      index,
-      number: rawPosts.length - index
-    }));
-
-    /**한 페이지에 10개씩 보여주기**/
-    const postsPerPage = 10;
-
-    /**currentPage: 기본적으로 마지막 페이지 (최신 게시물이 있는 페이지)**/
-    let currentPage = Math.ceil(posts.length / postsPerPage); // 기본은 최신글 페이지
-
-    const userInfo = JSON.parse(localStorage.getItem("currentUser"));
     const loginStatus = document.getElementById("loginStatus");
     const logoutBtn = document.getElementById("logoutBtn");
+  
+    let posts = [];
+    const postsPerPage = 10;
+    let currentPage = Math.ceil(posts.length / postsPerPage);
+  
+    /** ✅ 로그인 상태 표시 및 로그아웃 버튼 처리 **/
+    function updateLoginUI() {
+      const loginStatus = document.getElementById("loginStatus");
+      const logoutBtn = document.getElementById("logoutBtn");
 
-    const urlParams = new URLSearchParams(location.search);
-    if (urlParams.get("newPost")) {
-      // 현재 페이지를 마지막 페이지로 설정
-      currentPage = Math.ceil(posts.length / postsPerPage);
-      
-      // 주소에서 ?newPost=1 제거해서 깔끔하게
-      history.replaceState(null, "", "index.html");
-    }
-    
-    /** 브라우저 캐시 문제 해결
-        사용자가 뒤로가기 했을 때 캐시된 페이지가 보이는 문제를 해결
-        강제로 새로고침해서 최신 게시물이 반영되도록 함**/
-    window.addEventListener("pageshow", (event) => {
-      const navType = performance.getEntriesByType("navigation")[0]?.type;
-      if (event.persisted || navType === "back_forward") {
-        // 브라우저 캐시로 돌아온 경우라면
-        location.reload(); // 강제로 새로고침
+      const storedUser = localStorage.getItem("currentUser");
+      let userInfo = null;
+
+      try {
+        if (storedUser) {
+          userInfo = JSON.parse(storedUser);
+        }
+      } catch (err) {
+        console.error("⚠️ currentUser 파싱 실패:", err);
       }
-    });
-
-    /** 로그인 상태 표시 + 로그아웃
-        로그인 여부에 따라 사용자 인사말 또는 로그인 링크 표시
-        로그아웃 버튼 누르면 localStorage 초기화 + 새로고침**/
-    if (userInfo) {
-      loginStatus.textContent = `👋 ${userInfo.username}님 환영합니다!`;
-      logoutBtn.classList.remove("hidden"); // 로그아웃 버튼 보이기
-    } else {
-      // 🔐 로그인하지 않았을 때 → 로그인 버튼으로 표시
-      const currentUrl = encodeURIComponent(location.href);
-      loginStatus.innerHTML = `<a href="login.html?redirect=${currentUrl}" class="text-blue-400 hover:underline">🔐 로그인</a>`;
-      logoutBtn.classList.add("hidden"); // 로그아웃 버튼 숨기기
+      
+      if (userInfo) {
+        loginStatus.textContent = `👋 ${userInfo.username}님 환영합니다!`;
+        logoutBtn.classList.remove("hidden");
+      } else {
+        const currentUrl = encodeURIComponent(location.href);
+        loginStatus.innerHTML = `<a href="login.html?redirect=${currentUrl}" class="text-blue-400 hover:underline">🔐 로그인</a>`;
+        logoutBtn.classList.add("hidden");
+      }
     }
-    
-    // 로그아웃 동작
+  
     logoutBtn.addEventListener("click", () => {
       if (confirm("로그아웃 하시겠습니까?")) {
         localStorage.removeItem("currentUser");
+        localStorage.removeItem("token");
         alert("로그아웃 되었습니다.");
         location.reload();
       }
     });
-
-    // 🔁 초기 전체 출력
-    renderPosts(currentPage);
-
-    // 🔥 공통 렌더링 함수
-    /** 게시물 렌더링 함수: renderPosts(page)
-        게시물을 가장 최근 게시물이 가장 높은 페이지에 위치하도록 역순 계산
-        각 게시물을 <div>로 만들어서 리스트에 추가**/
-    function renderPosts(page = 1) {
+  
+    /** ✅ 게시글 렌더링 함수 **/
+    function renderPosts(postsArray, page = 1) {
       postList.innerHTML = "";
-    
-      const totalPages = Math.ceil(posts.length / postsPerPage);
+  
+      const totalPages = Math.ceil(postsArray.length / postsPerPage);
       const startIndex = (totalPages - page) * postsPerPage;
       const endIndex = startIndex + postsPerPage;
-    
-      const paginatedPosts = posts.slice(startIndex, endIndex);
-    
+      const paginatedPosts = postsArray.slice(startIndex, endIndex);
+  
       paginatedPosts.forEach((post, idx) => {
-        const postNumber = posts.length - (startIndex + idx);
+        const postNumber = postsArray.length - (startIndex + idx);
         const date = new Date(post.date);
         const formattedDate = date.toLocaleString("ko-KR", {
           year: "2-digit",
           month: "2-digit",
           day: "2-digit",
           hour: "2-digit",
-          minute: "2-digit",
+          minute: "2-digit"
         }).replace(/\./g, '-').replace(/\s/g, '');
-    
+  
         const el = document.createElement("div");
         el.className = "flex items-center py-2 px-4 text-sm text-gray-300";
-    
         el.innerHTML = `
           <div class="w-1/6 text-left">${postNumber}</div>
           <div class="w-3/6 text-center truncate">
-            <a href="board_view.html?index=${post.index}" class="hover:underline text-white">${post.title}</a>
+            <a href="board_view.html?index=${post.id}" class="hover:underline text-white">${post.title}</a>
           </div>
           <div class="w-2/6 text-right">${formattedDate}</div>
         `;
-    
         postList.appendChild(el);
       });
-    
-      renderPagination();
+  
+      renderPagination(postsArray);
     }
-    
-    
-    
-    /** 페이지네이션 렌더링
-        ⏮ / ⏭	가장 처음/가장 마지막 페이지로 이동
-        ◀ / ▶	페이지 번호 묶음을 앞뒤로 이동 (ex. 10개씩 보여줌)
-        숫자 버튼	클릭 시 해당 페이지 게시물 보여줌**/
-    function renderPagination() {
+  
+    /** ✅ 페이지네이션 표시 함수 **/
+    function renderPagination(postsArray) {
       const pagination = document.getElementById("pagination");
       pagination.innerHTML = "";
-    
-      const totalPages = Math.ceil(posts.length / postsPerPage);
-    
-      const groupSize = 10; // 🔥 한 번에 보여줄 페이지 수
+  
+      const totalPages = Math.ceil(postsArray.length / postsPerPage);
+      const groupSize = 10;
       const groupStart = Math.floor((currentPage - 1) / groupSize) * groupSize + 1;
       const groupEnd = Math.min(groupStart + groupSize - 1, totalPages);
-
-      // ⏮ 항상 오른쪽에 추가 → 마지막 페이지로 이동
-      const toLast = document.createElement("button");
-      toLast.textContent = "⏮";
-      toLast.className = "px-2 py-1 text-sm text-gray-400 hover:text-white";
-      toLast.addEventListener("click", () => {
-        currentPage = totalPages;
-        renderPosts(currentPage);
+  
+      // ⏭ 첫 페이지로 이동
+      const toFirst = document.createElement("button");
+      toFirst.textContent = "⏭";
+      toFirst.className = "px-2 py-1 text-sm text-gray-400 hover:text-white";
+      toFirst.addEventListener("click", () => {
+        currentPage = 1;
+        renderPosts(postsArray, currentPage);
       });
-      pagination.appendChild(toLast);
-    
-      // ◀ 왼쪽 화살표 → 다음 그룹 (오른쪽으로 이동)
-      if (groupEnd < totalPages) {
-        const next = document.createElement("button");
-        next.textContent = "◀";
-        next.className = "px-2 py-1 text-sm text-gray-400 hover:text-white";
-        next.addEventListener("click", () => {
-          currentPage = groupEnd + 1;
-          renderPosts(currentPage);
-        });
-        pagination.appendChild(next);
-      }
-    
-      // 페이지 번호
-      for (let i = groupEnd; i >= groupStart; i--) {
-        const btn = document.createElement("button");
-        btn.textContent = i;
-        btn.className = `px-3 py-1 rounded hover:bg-[#3a3b3e] ${
-          i === currentPage ? "bg-[#10a37f] text-white" : ""
-        }`;
-        btn.addEventListener("click", () => {
-          currentPage = i;
-          renderPosts(currentPage);
-        });
-        pagination.appendChild(btn);
-      }
-    
-      // ▶ 오른쪽 화살표 → 이전 그룹 (왼쪽으로 이동)
+      pagination.appendChild(toFirst);
+  
+      // ▶ 이전 페이지 그룹
       if (groupStart > 1) {
         const prev = document.createElement("button");
         prev.textContent = "▶";
         prev.className = "px-2 py-1 text-sm text-gray-400 hover:text-white";
         prev.addEventListener("click", () => {
           currentPage = groupStart - 1;
-          renderPosts(currentPage);
+          renderPosts(postsArray, currentPage);
         });
         pagination.appendChild(prev);
       }
-
-      // ⏭ 항상 왼쪽에 추가 → 첫 페이지로 이동
-      const toFirst = document.createElement("button");
-      toFirst.textContent = "⏭";
-      toFirst.className = "px-2 py-1 text-sm text-gray-400 hover:text-white";
-      toFirst.addEventListener("click", () => {
-        currentPage = 1;
-        renderPosts(currentPage);
+  
+      // 페이지 번호 버튼
+      for (let i = groupEnd; i >= groupStart; i--) {
+        const btn = document.createElement("button");
+        btn.textContent = i;
+        btn.className = `px-3 py-1 rounded hover:bg-[#3a3b3e] ${i === currentPage ? "bg-[#10a37f] text-white" : ""}`;
+        btn.addEventListener("click", () => {
+          currentPage = i;
+          renderPosts(postsArray, currentPage);
+        });
+        pagination.appendChild(btn);
+      }
+  
+      // ◀ 다음 페이지 그룹
+      if (groupEnd < totalPages) {
+        const next = document.createElement("button");
+        next.textContent = "◀";
+        next.className = "px-2 py-1 text-sm text-gray-400 hover:text-white";
+        next.addEventListener("click", () => {
+          currentPage = groupEnd + 1;
+          renderPosts(postsArray, currentPage);
+        });
+        pagination.appendChild(next);
+      }
+  
+      // ⏮ 마지막 페이지로 이동
+      const toLast = document.createElement("button");
+      toLast.textContent = "⏮";
+      toLast.className = "px-2 py-1 text-sm text-gray-400 hover:text-white";
+      toLast.addEventListener("click", () => {
+        currentPage = totalPages;
+        renderPosts(postsArray, currentPage);
       });
-      pagination.appendChild(toFirst);
+      pagination.appendChild(toLast);
     }
-    
-    
-
-    function renderFilteredPosts(filteredPosts) {
-      postList.innerHTML = "";
-    
-      filteredPosts.forEach(({ post, index }, i) => {
-        const postNumber = filteredPosts.length - i;
-        const date = new Date(post.date);
-        const formattedDate = date.toLocaleString("ko-KR", {
-          year: "2-digit", month: "2-digit", day: "2-digit",
-          hour: "2-digit", minute: "2-digit"
-        }).replace(/\./g, '-').replace(/\s/g, '');
-    
-        const el = document.createElement("div");
-        el.className = "flex items-center py-2 px-4 text-sm text-gray-300";
-    
-        el.innerHTML = `
-          <div class="w-1/6 text-left">${post.number}</div>
-          <div class="w-3/6 text-center truncate">
-            <a href="board_view.html?index=${post.index}" class="hover:underline text-white">${post.title}</a>
-          </div>
-          <div class="w-2/6 text-right">${formattedDate}</div>
-        `;
-    
-        postList.appendChild(el);
-      });
-    
-      // 검색 시에는 페이지네이션 숨김
-      document.getElementById("pagination").style.display = "none";
-    }
-    
-
-
-    /** 🔍 검색 기능
-        제목에 검색어가 포함된 게시글만 찾아서 새로 목록 렌더링
-        검색 시에는 페이지네이션 감춤**/
+  
+    /** ✅ 검색 기능 **/
     document.getElementById("searchBtn").addEventListener("click", () => {
       const keyword = document.getElementById("searchInput").value.toLowerCase();
-    
-      const filtered = posts
-        .map((post, index) => ({ post, index }))
-        .filter(({ post }) => post.title.toLowerCase().includes(keyword));
-    
+  
+      const filtered = posts.filter(post =>
+        post.title.toLowerCase().includes(keyword)
+      );
+  
       if (keyword === "") {
-        // 검색어가 없으면 전체 다시 보여주기
         document.getElementById("pagination").style.display = "flex";
-        renderPosts(currentPage);
+        renderPosts(posts, currentPage);
       } else {
-        renderFilteredPosts(filtered);
+        document.getElementById("pagination").style.display = "none";
+        renderPosts(filtered, 1);
       }
     });
-    
-
+  
+    /** ✅ 페이지 로드 시 데이터 가져오기 + 초기 렌더링 **/
+    window.addEventListener("DOMContentLoaded", () => {
+      updateLoginUI();
+  
+      fetch("http://localhost:4000/posts")
+        .then(res => res.json())
+        .then(data => {
+          posts = data.sort((a, b) => b.id - a.id); // 최신순 정렬
+          currentPage = Math.ceil(posts.length / postsPerPage);
+          renderPosts(posts, currentPage);
+        })
+        .catch(err => {
+          console.error("게시글 불러오기 실패:", err);
+          postList.innerHTML = `<p class="text-center text-red-400 mt-4">게시글을 불러오는 중 오류가 발생했습니다.</p>`;
+        });
+    });
+  
+    /** ✅ 뒤로 가기 시 캐시된 페이지 새로고침 **/
+    window.addEventListener("pageshow", (event) => {
+      const navType = performance.getEntriesByType("navigation")[0]?.type;
+      if (event.persisted || navType === "back_forward") {
+        location.reload();
+      }
+    });
   </script>
+  
+  
   
 </body>
 </html>
