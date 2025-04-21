@@ -51,13 +51,17 @@
     </div>
   </section>
 
-  <script>
+  <script type="module" src="utils/authFetch.js"></script>
+
+  <script type="module">
+    import { authFetch } from "./utils/authFetch.js";
+
     // ✅ 게시글 ID 파라미터 가져오기 (쿼리스트링에서 index 대신 id로 관리)
     const params = new URLSearchParams(window.location.search);
     const postId = params.get("index");
 
     // ✅ 현재 로그인 유저 정보 + 토큰
-    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    let currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
     const token = currentUser.token;
 
     // ✅ DOM 요소들
@@ -72,7 +76,14 @@
     const fileBox = document.getElementById("fileBox");
 
     // ✅ 로그인 상태 UI 표시
-    if (currentUser) {
+  
+    try {
+      currentUser = JSON.parse(localStorage.getItem("currentUser"));
+    } catch (e) {
+      console.warn("currentUser 파싱 오류:", e);
+    }
+
+    if (currentUser && currentUser.username) {
       loginStatus.textContent = `👋 ${currentUser.username}님`;
       logoutBtn.classList.remove("hidden");
     } else {
@@ -92,11 +103,11 @@
     let currentPost = null; // 전역으로 게시글 정보를 저장
 
     // 게시글 로딩 → 댓글도 이 안에서 같이 호출
-    fetch(`http://localhost:4000/posts/${postId}`)
-    .then((res) => {
-      if (!res.ok) throw new Error("게시글을 불러올 수 없습니다.");
-      return res.json();
-    })
+    authFetch(`http://localhost:4000/posts/${postId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("게시글을 불러올 수 없습니다.");
+        return res.json();
+      })
     .then((post) => {
       currentPost = post; // 전역 변수에 저장
       titleEl.textContent = post.title;
@@ -132,11 +143,8 @@
       }
     
       try {
-        const res = await fetch(`http://localhost:4000/posts/${postId}`, {
-          method: "DELETE",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-          },
+        const res = await authFetch(`http://localhost:4000/posts/${postId}`, {
+          method: "DELETE"
         });
     
         const data = await res.json();
@@ -154,6 +162,27 @@
       }
     });
         
+    async function deleteComment(commentId) {
+      try {
+        const res = await authFetch(`http://localhost:4000/comments/${commentId}`, {
+          method: "DELETE"
+        });
+    
+        const result = await res.json();
+    
+        if (!res.ok) {
+          alert(result.message || "삭제 실패");
+          return;
+        }
+    
+        alert("댓글이 삭제되었습니다.");
+        await loadComments(postId, currentPost); // 댓글 목록 다시 불러오기
+      } catch (err) {
+        console.error("댓글 삭제 실패:", err);
+        alert("댓글 삭제 중 오류가 발생했습니다.");
+      }
+    }
+    
 
     /** ✅ 댓글 렌더링 함수
         게시글에 작성된 모든 댓글과 대댓글을 출력함.
@@ -307,16 +336,15 @@
       if (!content) return;
     
       try {
-        const res = await fetch(`http://localhost:4000/comments`, {
+        const res = await authFetch("http://localhost:4000/comments", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
+            "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            postId, // 게시물 ID
+            postId,
             content,
-            parentId: null // 일반 댓글 (대댓글은 별도로)
+            parentId: null
           })
         });
     
@@ -335,7 +363,7 @@
         페이지가 로드되었을 때, 기존 댓글이 있다면 자동으로 출력**/
     async function loadComments(postId, post) {
       try {
-        const res = await fetch(`http://localhost:4000/comments/${postId}`);
+        const res = await authFetch(`http://localhost:4000/comments/${postId}`);
         const data = await res.json();
 
         renderComments(data, post);
@@ -347,6 +375,14 @@
     // 마지막에 호출
     loadComments(postId, currentPost);
         
+    // 🔁 뒤로가기 시 페이지 캐시 무효화
+    window.addEventListener("pageshow", (event) => {
+      const navType = performance.getEntriesByType("navigation")[0]?.type;
+      if (event.persisted || navType === "back_forward") {
+        location.reload(); // 강제 새로고침
+      }
+    });
+
 
   </script>
 

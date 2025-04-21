@@ -3,60 +3,55 @@
 <head>
   <meta charset="UTF-8" />
   <title>로그인</title>
-  <!-- ✅ Tailwind CSS 불러오기 -->
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-[#232427] text-white">
 
-  <!-- 🔐 로그인 폼 영역 
-       가운데 정렬(mx-auto), 위쪽 여백(mt-20), 내부 패딩(p-6), 그림자(shadow) 등 Tailwind 클래스로 스타일링 -->
   <main class="max-w-md mx-auto mt-20 bg-[#2b2c30] p-6 rounded-xl shadow space-y-6">
     <h1 class="text-2xl font-bold text-center mb-4">로그인</h1>
 
-    <!-- ✅ 아이디 입력 필드 -->
+    <!-- 아이디 -->
     <div>
       <label for="username" class="block mb-1">아이디</label>
-      <input id="username" type="text"
-             class="w-full px-3 py-2 bg-[#40414f] text-white rounded border border-[#565869]"
-             placeholder="아이디 입력" />
+      <input id="username" type="text" placeholder="아이디 입력"
+             class="w-full px-3 py-2 bg-[#40414f] text-white rounded border border-[#565869]" />
     </div>
 
-    <!-- ✅ 비밀번호 입력 필드 -->
+    <!-- 비밀번호 -->
     <div>
       <label for="password" class="block mb-1">비밀번호</label>
-      <input id="password" type="password"
-             class="w-full px-3 py-2 bg-[#40414f] text-white rounded border border-[#565869]"
-             placeholder="비밀번호 입력" />
+      <input id="password" type="password" placeholder="비밀번호 입력"
+             class="w-full px-3 py-2 bg-[#40414f] text-white rounded border border-[#565869]" />
     </div>
 
-    <!-- ✅ 로그인 버튼 -->
+    <!-- 로그인 버튼 -->
     <button id="loginBtn"
             class="w-full py-2 bg-[#10a37f] text-white rounded hover:bg-[#0d8f6d] font-semibold">
       로그인
     </button>
 
-    <!-- ✅ 회원가입 페이지로 이동하는 링크 -->
+    <!-- 회원가입 링크 -->
     <div class="text-center mt-4">
       <a href="signUp.html" class="text-sm text-blue-400 hover:underline">회원가입</a>
     </div>
 
-    <!-- ⚠ 오류 메시지 표시 영역 -->
     <p id="msg" class="text-sm text-center text-red-400 mt-2"></p>
   </main>
 
   <script>
     const btn = document.getElementById("loginBtn");
-  
+
     btn.addEventListener("click", async () => {
       const username = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value.trim();
       const msg = document.getElementById("msg");
-  
+
       if (!username || !password) {
         msg.textContent = "아이디와 비밀번호를 입력해주세요.";
         return;
       }
-  
+
       try {
         const res = await fetch("http://localhost:4000/users/login", {
           method: "POST",
@@ -65,20 +60,21 @@
           },
           body: JSON.stringify({ username, password })
         });
-  
+
         const data = await res.json();
-  
+
         if (res.ok) {
-          // ✅ 사용자 정보 + 토큰 저장
+          // ✅ Access + Refresh Token 저장
           localStorage.setItem("currentUser", JSON.stringify({
             id: data.user.id,
             username: data.user.username,
-            token: data.token
-          }));// JWT 토큰 저장
-  
-          alert(`${username}님, 환영합니다!`);
-  
-          // ✅ redirect 있으면 이동
+            token: data.accessToken,
+          }));
+          localStorage.setItem("refreshToken", data.refreshToken);
+
+          alert(`${data.user.username}님, 환영합니다!`);
+
+          // ✅ redirect 파라미터가 있을 경우 해당 경로로 이동
           const redirectUrl = new URLSearchParams(location.search).get("redirect");
           if (redirectUrl) {
             window.location.href = decodeURIComponent(redirectUrl);
@@ -94,8 +90,6 @@
       }
     });
   </script>
-  
-  
 
 </body>
 </html>
