@@ -52,22 +52,26 @@
   </section>
 
   <script>
-    // ✅ 게시글 index 파라미터 가져오기
+    // ✅ 게시글 ID 파라미터 가져오기 (쿼리스트링에서 index 대신 id로 관리)
     const params = new URLSearchParams(window.location.search);
-    const index = parseInt(params.get("index"));
+    const postId = params.get("index");
 
-    // ✅ 데이터 불러오기
-    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+    // ✅ 현재 로그인 유저 정보 + 토큰
+    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    const token = currentUser.token;
 
-    // ✅ DOM 요소 가져오기
-    const commentList = document.getElementById("commentList");
-    const commentInput = document.getElementById("commentInput");
-    const commentSubmit = document.getElementById("commentSubmit");
+    // ✅ DOM 요소들
     const loginStatus = document.getElementById("loginStatus");
     const logoutBtn = document.getElementById("logoutBtn");
+    const titleEl = document.getElementById("postTitle");
+    const authorEl = document.getElementById("postAuthor");
+    const dateEl = document.getElementById("postDate");
+    const contentEl = document.getElementById("postContent");
+    const editBtn = document.getElementById("editBtn");
+    const deleteBtn = document.getElementById("deleteBtn");
+    const fileBox = document.getElementById("fileBox");
 
-    /** ✅ 로그인 상태 표시
-        로그인된 사용자는 인사말을, 비로그인 사용자는 로그인 링크를 표시**/
+    // ✅ 로그인 상태 UI 표시
     if (currentUser) {
       loginStatus.textContent = `👋 ${currentUser.username}님`;
       logoutBtn.classList.remove("hidden");
@@ -76,9 +80,7 @@
       loginStatus.innerHTML = `<a href="login.html?redirect=${currentUrl}" class="text-blue-400 hover:underline">🔐 로그인</a>`;
       logoutBtn.classList.add("hidden");
     }
-    
-    /** 로그아웃 처리
-        로그아웃 버튼 클릭 시 사용자 정보 삭제 후 새로고침**/
+
     logoutBtn.addEventListener("click", () => {
       if (confirm("로그아웃 하시겠습니까?")) {
         localStorage.removeItem("currentUser");
@@ -87,64 +89,69 @@
       }
     });
 
-    /** ✅ 댓글 글자 수 표시
-        댓글 입력창에 따라 실시간 글자 수를 표시**/ 
-    commentInput.addEventListener("input", () => {
-      const len = commentInput.value.length;
-      document.getElementById("charCount").textContent = `${len} / 200자`;
+    let currentPost = null; // 전역으로 게시글 정보를 저장
+
+    // 게시글 로딩 → 댓글도 이 안에서 같이 호출
+    fetch(`http://localhost:4000/posts/${postId}`)
+    .then((res) => {
+      if (!res.ok) throw new Error("게시글을 불러올 수 없습니다.");
+      return res.json();
+    })
+    .then((post) => {
+      currentPost = post; // 전역 변수에 저장
+      titleEl.textContent = post.title;
+      authorEl.textContent = `작성자: ${post.author}`;
+      dateEl.textContent = `작성일: ${post.created_at}`;
+      contentEl.textContent = post.content;
+
+      if (post.file_name) {
+        fileBox.innerHTML = `📎 첨부파일: <span class="text-white">${post.file_name}</span>`;
+      }
+
+      if (currentUser && currentUser.username === post.author) {
+        editBtn.classList.remove("hidden");
+        deleteBtn.classList.remove("hidden");
+        editBtn.href = `board_edit.html?index=${post.id}`;
+      }
+
+      // ✅ 게시글이 성공적으로 로드된 다음에만 댓글 로딩
+      loadComments(postId, post);
+    })
+    .catch((err) => {
+      document.body.innerHTML = `<p class='text-center mt-10 text-red-400'>게시글을 불러오지 못했습니다.</p>`;
+      console.error(err);
     });
 
-    /** ✅ 게시글 표시
-        유효하지 않은 index인 경우 오류 메시지를 출력.
-        게시글 정보(title, author, content, date, file)를 렌더링.**/
-    const postId = new URLSearchParams(location.search).get("index");
-
-    fetch(`/posts/${postId}`)
-      .then(res => {
-        if (!res.ok) throw new Error("게시글을 불러올 수 없습니다.");
-        return res.json();
-      })
-      .then(post => {
-        document.getElementById("postTitle").textContent = post.title;
-        document.getElementById("postAuthor").textContent = `작성자: ${post.author}`;
-        document.getElementById("postDate").textContent = `작성일: ${post.date}`;
-        document.getElementById("postContent").textContent = post.content;
-    
-        if (post.file_name) {
-          document.getElementById("fileBox").innerHTML =
-            `📎 첨부파일: <span class="text-white">${post.file_name}</span>`;
-        }
-    
-        const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-        if (currentUser?.username === post.author) {
-          document.getElementById("editBtn").classList.remove("hidden");
-          document.getElementById("deleteBtn").classList.remove("hidden");
-        }
-      })
-      .catch(err => {
-        document.body.innerHTML = "<p class='text-center mt-10 text-red-400'>존재하지 않는 게시글입니다.</p>";
-      });
-        
-
-    /** ✅ 게시글 삭제 기능
-        삭제 버튼 클릭 시 localStorage에서 게시글 제거 및 메인 페이지로 이동**/
-    document.getElementById("deleteBtn").addEventListener("click", () => {
+    // ✅ 게시글 삭제
+    deleteBtn.addEventListener("click", async () => {
       if (!confirm("정말로 삭제하시겠습니까?")) return;
     
-      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("로그인이 필요합니다.");
+        return;
+      }
     
-      fetch(`/posts/${postId}`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`
+      try {
+        const res = await fetch(`http://localhost:4000/posts/${postId}`, {
+          method: "DELETE",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
+        });
+    
+        const data = await res.json();
+    
+        if (!res.ok) {
+          alert(data.message || "삭제에 실패했습니다.");
+          return;
         }
-      })
-        .then(res => res.json())
-        .then(data => {
-          alert(data.message);
-          window.location.href = "index.html";
-        })
-        .catch(() => alert("삭제 중 오류 발생"));
+    
+        alert("게시글이 삭제되었습니다.");
+        window.location.replace("index.html");
+      } catch (err) {
+        console.error("삭제 요청 실패:", err);
+        alert("서버 오류가 발생했습니다.");
+      }
     });
         
 
@@ -159,21 +166,23 @@
         ✅ 대댓글 등록 버튼 클릭 시 대댓글 replies에 추가
         ✅ 취소 버튼 클릭 시 입력창 제거, 다시 답글 버튼 표시
         ✅ 삭제 버튼 클릭 시 본인 댓글이면 "삭제된 댓글입니다."로 표시**/
-    function renderComments(comments) {
+    function renderComments(comments, post) {
+      if (!post) return;
+
       commentList.innerHTML = "";
 
       comments.forEach((comment, idx) => {
         const el = document.createElement("div");
         el.className = "bg-[#3a3b3e] p-3 rounded text-sm text-gray-200 space-y-1";
 
-        const isPostAuthor = comment.author === posts[index].author;
+        const isPostAuthor = comment.author === post.author;
         el.innerHTML = `
           <div class="view-mode">
             <p class="comment-content ${comment.deleted ? 'italic text-gray-500' : ''}">${comment.content}</p>
             <p class="text-xs text-gray-400">
               작성자: ${comment.author}
               ${isPostAuthor ? '<span class="ml-1 px-2 py-[1px] text-[11px] bg-gray-600 text-white rounded">작성자</span>' : ''}
-              | ${comment.date}
+              | ${comment.created_at}
             </p>
             <div class="flex gap-2 justify-end text-xs text-gray-400">
               <button class="reply-btn underline" data-index="${idx}">답글</button>
@@ -187,7 +196,7 @@
 
         const replyContainer = el.querySelector(".replies");
         (comment.replies || []).forEach(reply => {
-          const isPostAuthor = reply.author === posts[index].author;
+          const isPostAuthor = reply.author === post.author;
           const replyEl = document.createElement("div");
           replyEl.className = "bg-[#2f3033] p-2 rounded text-xs text-gray-300";
           replyEl.innerHTML = `
@@ -195,7 +204,7 @@
             <p class="text-[11px] text-gray-400 mt-1">
               작성자: ${reply.author}
               ${isPostAuthor ? '<span class="ml-1 px-1 py-[1px] bg-gray-600 text-white rounded text-[10px]">작성자</span>' : ''}
-              | ${reply.date}
+              | ${reply.created_at}
             </p>
           `;
           replyContainer.appendChild(replyEl);
@@ -247,19 +256,19 @@
 
             const reply = {
               content: text,
-              date: new Date().toLocaleString("ko-KR", {
+              created_at: new Date().toLocaleString("ko-KR", {
                 year: "2-digit", month: "2-digit", day: "2-digit",
                 hour: "2-digit", minute: "2-digit"
               }),
               author: currentUser.username
             };
 
-            if (!posts[index].comments[idx].replies)
-              posts[index].comments[idx].replies = [];
+            if (!post.comments[idx].replies)
+              post.comments[idx].replies = [];
 
-            posts[index].comments[idx].replies.push(reply);
+            post.comments[idx].replies.push(reply);
             localStorage.setItem("posts", JSON.stringify(posts));
-            renderComments(posts[index].comments);
+            renderComments(post.comments);
           });
 
           cancelBtn.addEventListener("click", () => {
@@ -269,17 +278,17 @@
         });
 
         el.querySelector(".delete-btn").addEventListener("click", () => {
-          const comment = posts[index].comments[idx];
-          if (comment.author !== currentUser?.username) {
+          const comment = comments[idx];
+          if (comment.author_id !== currentUser?.id) {
             alert("본인만 댓글을 삭제할 수 있습니다.");
             return;
           }
-          if (!confirm("댓글을 삭제하시겠습니까?")) return;
-          comment.content = "삭제된 댓글입니다.";
-          comment.deleted = true;
-          localStorage.setItem("posts", JSON.stringify(posts));
-          renderComments(posts[index].comments);
+        
+          if (confirm("댓글을 삭제하시겠습니까?")) {
+            deleteComment(comment.id);
+          }
         });
+        
       });
     }
 
@@ -287,38 +296,56 @@
         로그인 여부 확인
         댓글을 현재 게시글의 comments 배열에 추가
         localStorage에 저장 후 다시 렌더링**/
-    commentSubmit.addEventListener("click", () => {
+    commentSubmit.addEventListener("click", async () => {
+      if (!currentUser || !token) {
+        alert("댓글 작성은 로그인 후 이용 가능합니다.");
+        window.location.href = `login.html?redirect=${encodeURIComponent(location.href)}`;
+        return;
+      }
+    
       const content = commentInput.value.trim();
       if (!content) return;
     
-      const token = localStorage.getItem("token");
-    
-      fetch(`/posts/${postId}/comments`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ content })
-      })
-        .then(res => res.json())
-        .then(() => {
-          commentInput.value = "";
-          loadComments();
+      try {
+        const res = await fetch(`http://localhost:4000/comments`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            postId, // 게시물 ID
+            content,
+            parentId: null // 일반 댓글 (대댓글은 별도로)
+          })
         });
+    
+        const result = await res.json();
+        commentInput.value = "";
+        await loadComments(postId, currentPost); // 등록 후 최신 댓글 다시 불러오기
+      } catch (err) {
+        console.error("댓글 등록 실패:", err);
+        alert("댓글 등록 중 오류가 발생했습니다.");
+      }
     });
+        
         
 
     /** ✅ 페이지 로드 시 댓글 자동 렌더링
         페이지가 로드되었을 때, 기존 댓글이 있다면 자동으로 출력**/
-    function loadComments() {
-      fetch(`/posts/${postId}/comments`)
-        .then(res => res.json())
-        .then(comments => renderComments(comments));
+    async function loadComments(postId, post) {
+      try {
+        const res = await fetch(`http://localhost:4000/comments/${postId}`);
+        const data = await res.json();
+
+        renderComments(data, post);
+      } catch (err) {
+        console.error("댓글 불러오기 실패:", err);
+      }
     }
     
     // 마지막에 호출
-    loadComments();
+    loadComments(postId, currentPost);
         
 
   </script>

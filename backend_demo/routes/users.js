@@ -66,6 +66,10 @@ router.post("/login", async (req, res) => {
     return res.json({
       message: "로그인 성공",
       token, // 👈 토큰을 클라이언트에 전달
+      user: {
+        id: user.id,
+        username: user.username
+      }
     });
 
   } catch (err) {

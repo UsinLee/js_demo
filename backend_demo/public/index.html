@@ -155,8 +155,8 @@
   
       paginatedPosts.forEach((post, idx) => {
         const postNumber = postsArray.length - (startIndex + idx);
-        const date = new Date(post.date);
-        const formattedDate = date.toLocaleString("ko-KR", {
+        const created_at = new Date(post.created_at);
+        const formattedDate = created_at.toLocaleString("ko-KR", {
           year: "2-digit",
           month: "2-digit",
           day: "2-digit",
