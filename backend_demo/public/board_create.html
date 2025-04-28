@@ -54,8 +54,10 @@
     </div>
 
   </main>
-
-  <script>
+  <script type="module" src="utils/authFetch.js"></script>
+  <script type="module">
+    import { authFetch } from "./utils/authFetch.js";
+    
     const button = document.querySelector("button");
 
     /** 로그인 여부 확인
@@ -79,11 +81,10 @@
     
       const fileName = fileInput ? fileInput.name : "";
     
-      fetch("http://localhost:4000/posts", {
+      authFetch("/posts", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({ title, content, fileName })
       })

@@ -100,7 +100,11 @@
     <div id="pagination" class="flex justify-center mt-6 gap-2 text-sm text-gray-400"></div>
   </div>
   
-  <script>
+  <script type="module" src="./utils/authFetch.js"></script>
+
+  <script type="module">
+    import { authFetch } from "./utils/authFetch.js";
+
     const postList = document.getElementById('postList');
     const loginStatus = document.getElementById("loginStatus");
     const logoutBtn = document.getElementById("logoutBtn");
@@ -135,12 +139,13 @@
       }
     }
   
-    logoutBtn.addEventListener("click", () => {
-      if (confirm("로그아웃 하시겠습니까?")) {
-        localStorage.removeItem("currentUser");
-        localStorage.removeItem("token");
-        alert("로그아웃 되었습니다.");
-        location.reload();
+      logoutBtn.addEventListener("click", () => {
+        if (confirm("로그아웃 하시겠습니까?")) {
+          localStorage.removeItem("currentUser");
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("refreshToken");
+          alert("로그아웃 되었습니다.");
+          location.reload();
       }
     });
   
@@ -267,10 +272,10 @@
     window.addEventListener("DOMContentLoaded", () => {
       updateLoginUI();
   
-      fetch("http://localhost:4000/posts")
+      authFetch("http://localhost:4000/posts")
         .then(res => res.json())
         .then(data => {
-          posts = data.sort((a, b) => b.id - a.id); // 최신순 정렬
+          posts = data.sort((a, b) => b.id - a.id);
           currentPage = Math.ceil(posts.length / postsPerPage);
           renderPosts(posts, currentPage);
         })

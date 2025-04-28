@@ -47,9 +47,13 @@
         수정 완료
       </button>
     </div>
-  </main>
+  </main> 
 
-  <script>
+  <script type="module" src="utils/authFetch.js"></script>
+  
+  <script type="module">
+    import { authFetch } from "./utils/authFetch.js";
+
     // ✅ URL 파라미터에서 수정 대상 게시글 ID 추출
   const params = new URLSearchParams(window.location.search);
   const postId = params.get("index");
@@ -107,11 +111,10 @@
   
     const fileName = file ? file.name : "";
   
-    fetch(`http://localhost:4000/posts/${postId}`, {
+    authFetch(`http://localhost:4000/posts/${postId}`, {
       method: "PUT",
       headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         title,
