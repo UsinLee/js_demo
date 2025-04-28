@@ -53,86 +53,86 @@
   
   <script type="module">
     import { authFetch } from "./utils/authFetch.js";
-
-    // ✅ URL 파라미터에서 수정 대상 게시글 ID 추출
-  const params = new URLSearchParams(window.location.search);
-  const postId = params.get("index");
-
-  // ✅ 로그인 유저 정보 및 토큰
-  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
-  const token = currentUser.token;
-
-  // ✅ 로그인하지 않은 경우 로그인 페이지로 이동
-  if (!currentUser.username || !currentUser.token) {
-    alert("로그인 후 수정할 수 있습니다.");
-    window.location.href = `login.html?redirect=${encodeURIComponent(location.href)}`;
-  }
-
-  // ✅ DOM 요소 가져오기
-  const titleInput = document.getElementById("title");
-  const contentInput = document.getElementById("content");
-  const fileInput = document.getElementById("fileInput");
-  const submitBtn = document.querySelector("button");
-
-  // ✅ 게시글 정보 불러오기
-  fetch(`http://localhost:4000/posts/${postId}`)
-    .then((res) => {
-      if (!res.ok) throw new Error("게시글을 불러올 수 없습니다.");
-      return res.json();
-    })
-    .then((post) => {
-      // 권한 체크: 로그인한 사용자만 수정 가능
-      if (currentUser.username !== post.author) {
-        alert("본인만 수정할 수 있습니다.");
-        window.location.href = "index.html";
-        return;
-      }
-
-      // 기존 게시글 정보 입력란에 채우기
-      titleInput.value = post.title;
-      contentInput.value = post.content;
-    })
-    .catch((err) => {
-      console.error(err);
-      alert("게시글 정보를 불러오는 중 오류가 발생했습니다.");
-      window.location.href = "index.html";
-    });
-
-  // ✅ 수정 요청
-  submitBtn.addEventListener("click", () => {
-    const title = document.getElementById("title").value.trim();
-    const content = document.getElementById("content").value.trim();
-    const file = document.getElementById("fileInput").files[0];
   
-    if (!title || !content) {
-      alert("제목과 내용을 입력해주세요.");
-      return;
+    // ✅ URL 파라미터에서 수정 대상 게시글 ID 추출
+    const params = new URLSearchParams(window.location.search);
+    const postId = params.get("index");
+  
+    // ✅ 로그인 유저 정보 가져오기
+    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+  
+    // ✅ 로그인하지 않은 경우 로그인 페이지로 이동
+    if (!currentUser || !currentUser.accessToken || !currentUser.refreshToken) {
+      alert("로그인 후 수정할 수 있습니다.");
+      window.location.href = `login.html?redirect=${encodeURIComponent(location.href)}`;
     }
   
-    const fileName = file ? file.name : "";
+    // ✅ DOM 요소 가져오기
+    const titleInput = document.getElementById("title");
+    const contentInput = document.getElementById("content");
+    const fileInput = document.getElementById("fileInput");
+    const submitBtn = document.querySelector("button");
   
-    authFetch(`http://localhost:4000/posts/${postId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        title,
-        content,
-        fileName
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        alert(data.message);
-        location.href = `board_view.html?index=${postId}`;
+    // ✅ 게시글 정보 불러오기 (🔥 fetch → authFetch 로 교체)
+    authFetch(`http://localhost:4000/posts/${postId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("게시글을 불러올 수 없습니다.");
+        return res.json();
+      })
+      .then((post) => {
+        // 권한 체크: 로그인한 사용자만 수정 가능
+        if (currentUser.username !== post.author) {
+          alert("본인만 수정할 수 있습니다.");
+          window.location.href = "index.html";
+          return;
+        }
+  
+        // 기존 게시글 정보 입력란에 채우기
+        titleInput.value = post.title;
+        contentInput.value = post.content;
       })
       .catch((err) => {
+        console.error("게시글 불러오기 오류:", err);
+        alert("게시글 정보를 불러오는 중 오류가 발생했습니다.");
+        window.location.href = "index.html";
+      });
+  
+    // ✅ 수정 요청
+    submitBtn.addEventListener("click", async () => {
+      const title = titleInput.value.trim();
+      const content = contentInput.value.trim();
+      const file = fileInput.files[0];
+    
+      if (!title || !content) {
+        alert("제목과 내용을 입력해주세요.");
+        return;
+      }
+    
+      const fileName = file ? file.name : "";
+    
+      try {
+        const res = await authFetch(`http://localhost:4000/posts/${postId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ title, content, fileName }),
+        });
+  
+        const data = await res.json();
+  
+        if (!res.ok) throw new Error(data.message || "수정 실패");
+  
+        alert(data.message || "게시글이 수정되었습니다!");
+        location.href = `board_view.html?index=${postId}`;
+      } catch (err) {
         console.error("게시글 수정 오류:", err);
         alert("게시글 수정에 실패했습니다.");
-      });
-  });
+      }
+    });
   </script>
+  
+  
 
 </body>
 </html>

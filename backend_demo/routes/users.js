@@ -68,7 +68,7 @@ router.post("/login", async (req, res) => {
 
     // 🔐 Refresh Token을 DB에 저장
     await pool.query(
-      "INSERT INTO refresh_tokens (user_id, token, created_at) VALUES ($1, $2, NOW())",
+      "INSERT INTO refresh_tokens (user_id, refresh_token, created_at) VALUES ($1, $2, NOW())",
       [user.id, refreshToken]
     );
 
@@ -95,7 +95,7 @@ router.post("/token", async (req, res) => {
   try {
     // 1. DB에 있는지 확인
     const result = await pool.query(
-      "SELECT * FROM refresh_tokens WHERE token = $1",
+      "SELECT * FROM refresh_tokens WHERE refresh_token = $1",
       [refreshToken]
     );
 
@@ -133,7 +133,7 @@ router.post("/logout", authMiddleware, async (req, res) => {
   try {
     // DB에서 해당 토큰 삭제
     await pool.query(
-      "DELETE FROM refresh_tokens WHERE user_id = $1 AND token = $2",
+      "DELETE FROM refresh_tokens WHERE user_id = $1 AND refresh_token = $2",
       [userId, refreshToken]
     );
 

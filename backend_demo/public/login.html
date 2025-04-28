@@ -68,9 +68,9 @@
           localStorage.setItem("currentUser", JSON.stringify({
             id: data.user.id,
             username: data.user.username,
-            token: data.accessToken,
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken
           }));
-          localStorage.setItem("refreshToken", data.refreshToken);
 
           alert(`${data.user.username}님, 환영합니다!`);
 

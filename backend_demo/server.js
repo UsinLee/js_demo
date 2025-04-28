@@ -24,6 +24,12 @@ app.use('/posts', postsRouter); // http://localhost:포트/posts/create
 const commentRoutes = require("./routes/comments");
 app.use("/comments", commentRoutes);
 
+app.use((req, res, next) => {
+  console.log("Authorization 헤더:", req.headers['authorization']);
+  next();
+});
+
+
 
 // 테스트 라우트
 app.get("/api/ping", (req, res) => {
