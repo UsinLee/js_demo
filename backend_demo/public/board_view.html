@@ -62,7 +62,7 @@
 
     // ✅ 현재 로그인 유저 정보 + 토큰
     let currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
-    const token = currentUser.token;
+    const token = currentUser.accessToken;
 
     // ✅ DOM 요소들
     const loginStatus = document.getElementById("loginStatus");
@@ -103,7 +103,7 @@
     let currentPost = null; // 전역으로 게시글 정보를 저장
 
     // 게시글 로딩 → 댓글도 이 안에서 같이 호출
-    authFetch(`http://localhost:4000/posts/${postId}`)
+    fetch(`http://localhost:4000/posts/${postId}`)
       .then((res) => {
         if (!res.ok) throw new Error("게시글을 불러올 수 없습니다.");
         return res.json();
@@ -195,131 +195,153 @@
         ✅ 대댓글 등록 버튼 클릭 시 대댓글 replies에 추가
         ✅ 취소 버튼 클릭 시 입력창 제거, 다시 답글 버튼 표시
         ✅ 삭제 버튼 클릭 시 본인 댓글이면 "삭제된 댓글입니다."로 표시**/
-    function renderComments(comments, post) {
-      if (!post) return;
-
+    function renderComments(comments) {
+      const commentList = document.getElementById("commentList");
       commentList.innerHTML = "";
-
-      comments.forEach((comment, idx) => {
-        const el = document.createElement("div");
-        el.className = "bg-[#3a3b3e] p-3 rounded text-sm text-gray-200 space-y-1";
-
-        const isPostAuthor = comment.author === post.author;
-        el.innerHTML = `
-          <div class="view-mode">
-            <p class="comment-content ${comment.deleted ? 'italic text-gray-500' : ''}">${comment.content}</p>
-            <p class="text-xs text-gray-400">
-              작성자: ${comment.author}
-              ${isPostAuthor ? '<span class="ml-1 px-2 py-[1px] text-[11px] bg-gray-600 text-white rounded">작성자</span>' : ''}
-              | ${comment.created_at}
-            </p>
-            <div class="flex gap-2 justify-end text-xs text-gray-400">
-              <button class="reply-btn underline" data-index="${idx}">답글</button>
-              <button class="delete-btn underline text-red-400" data-index="${idx}">삭제</button>
-            </div>
-          </div>
-          <div class="replies space-y-2 ml-4 mt-2"></div>
-        `;
-
-        commentList.appendChild(el);
-
-        const replyContainer = el.querySelector(".replies");
-        (comment.replies || []).forEach(reply => {
-          const isPostAuthor = reply.author === post.author;
-          const replyEl = document.createElement("div");
-          replyEl.className = "bg-[#2f3033] p-2 rounded text-xs text-gray-300";
-          replyEl.innerHTML = `
-            <p>${reply.content}</p>
-            <p class="text-[11px] text-gray-400 mt-1">
-              작성자: ${reply.author}
-              ${isPostAuthor ? '<span class="ml-1 px-1 py-[1px] bg-gray-600 text-white rounded text-[10px]">작성자</span>' : ''}
-              | ${reply.created_at}
-            </p>
-          `;
-          replyContainer.appendChild(replyEl);
-        });
-
-        const replyBtn = el.querySelector(".reply-btn");
-        replyBtn.addEventListener("click", () => {
-          if (!currentUser) {
-            alert("답글 작성은 로그인 후 이용 가능합니다.");
-            window.location.href = `login.html?redirect=${encodeURIComponent(location.href)}`;
-            return;
-          }
-
-          if (el.querySelector(".reply-form")) return;
-          replyBtn.classList.add("hidden");
-
-          const form = document.createElement("div");
-          form.className = "reply-form mt-2 space-y-1";
-          form.innerHTML = `
-            <input type="text" maxlength="200"
-              class="w-full px-2 py-1 bg-[#40414f] text-white border border-[#565869] rounded"
-              placeholder="답글을 입력하세요" />
-            <div class="flex justify-between items-center">
-              <p class="text-xs text-gray-400" id="replyCharCount">0 / 200자</p>
-              <div class="flex gap-2">
-                <button class="submit-btn px-3 py-1 bg-[#10a37f] text-white rounded text-xs">등록</button>
-                <button class="cancel-btn px-3 py-1 bg-[#565869] text-white rounded text-xs">취소</button>
-              </div>
-            </div>
-          `;
-
-          replyContainer.appendChild(form);
-
-          const input = form.querySelector("input");
-          const count = form.querySelector("#replyCharCount");
-          const submitBtn = form.querySelector(".submit-btn");
-          const cancelBtn = form.querySelector(".cancel-btn");
-
-          input.addEventListener("input", () => {
-            count.textContent = `${input.value.length} / 200자`;
-            count.classList.toggle("text-red-400", input.value.length > 180);
-          });
-
-          input.focus();
-
-          submitBtn.addEventListener("click", () => {
-            const text = input.value.trim();
-            if (!text) return;
-
-            const reply = {
-              content: text,
-              created_at: new Date().toLocaleString("ko-KR", {
-                year: "2-digit", month: "2-digit", day: "2-digit",
-                hour: "2-digit", minute: "2-digit"
-              }),
-              author: currentUser.username
-            };
-
-            if (!post.comments[idx].replies)
-              post.comments[idx].replies = [];
-
-            post.comments[idx].replies.push(reply);
-            localStorage.setItem("posts", JSON.stringify(posts));
-            renderComments(post.comments);
-          });
-
-          cancelBtn.addEventListener("click", () => {
-            form.remove();
-            replyBtn.classList.remove("hidden");
-          });
-        });
-
-        el.querySelector(".delete-btn").addEventListener("click", () => {
-          const comment = comments[idx];
-          if (comment.author_id !== currentUser?.id) {
-            alert("본인만 댓글을 삭제할 수 있습니다.");
-            return;
-          }
+    
+      comments.forEach(comment => {
+        if (!comment.parent_id) {
+          renderComment(comment); // 댓글만 따로 먼저 그림
+        }
+      });
+    
+      comments.forEach(comment => {
+        if (comment.parent_id) {
+          renderReply(comment); // 대댓글은 따로 처리
+        }
+      });
+    }
         
+    function replyFrom(parentCommentId) {
+      const replyContainer = document.getElementById(`replies-${parentCommentId}`);
+      
+      if (replyContainer.querySelector(".reply-form")) return; // 이미 입력창이 있으면 막음
+    
+      const form = document.createElement("div");
+      form.className = "reply-form mt-2 space-y-1";
+      form.innerHTML = `
+        <input type="text" maxlength="200"
+          class="w-full px-2 py-1 bg-[#40414f] text-white border border-[#565869] rounded"
+          placeholder="답글을 입력하세요" />
+        <div class="flex justify-between items-center">
+          <p class="text-xs text-gray-400 replyCharCount">0 / 200자</p>
+          <div class="flex gap-2">
+            <button class="submit-reply-btn px-3 py-1 bg-[#10a37f] text-white rounded text-xs">등록</button>
+            <button class="cancel-reply-btn px-3 py-1 bg-[#565869] text-white rounded text-xs">취소</button>
+          </div>
+        </div>
+      `;
+    
+      replyContainer.appendChild(form);
+    
+      const input = form.querySelector("input");
+      const count = form.querySelector(".replyCharCount");
+      const submitBtn = form.querySelector(".submit-reply-btn");
+      const cancelBtn = form.querySelector(".cancel-reply-btn");
+    
+      input.addEventListener("input", () => {
+        count.textContent = `${input.value.length} / 200자`;
+        count.classList.toggle("text-red-400", input.value.length > 180);
+      });
+    
+      submitBtn.addEventListener("click", async () => {
+        const text = input.value.trim();
+        if (!text) return;
+    
+        try {
+          const res = await authFetch("http://localhost:4000/comments", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              postId,
+              content: text,
+              parentId: parentCommentId // ✅ 부모 댓글 ID 넘긴다
+            })
+          });
+    
+          const result = await res.json();
+          if (res.ok) {
+            alert("답글이 등록되었습니다!");
+            await loadComments(postId, currentPost); // 댓글 목록 다시 불러오기
+          } else {
+            alert(result.message || "답글 등록 실패");
+          }
+        } catch (err) {
+          console.error("답글 등록 실패:", err);
+          alert("답글 등록 중 오류가 발생했습니다.");
+        }
+      });
+    
+      cancelBtn.addEventListener("click", () => {
+        form.remove();
+      });
+    }
+    
+    
+    function renderComment(comment) {
+      const commentList = document.getElementById("commentList");
+      const el = document.createElement("div");
+      el.className = "bg-[#3a3b3e] p-3 rounded text-sm text-gray-200 space-y-1";
+    
+      const isPostAuthor = comment.author === currentPost.author;
+      el.innerHTML = `
+        <div class="view-mode">
+          <p class="comment-content ${comment.is_deleted ? 'italic text-gray-500' : ''}">${comment.content}</p>
+          <p class="text-xs text-gray-400">
+            작성자: ${comment.author}
+            ${isPostAuthor ? '<span class="ml-1 px-2 py-[1px] text-[11px] bg-gray-600 text-white rounded">작성자</span>' : ''}
+            | ${new Date(comment.created_at).toLocaleString("ko-KR", { year: "2-digit", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+          </p>
+          <div class="flex gap-2 justify-end text-xs text-gray-400">
+            ${!comment.is_deleted ? `<button class="reply-btn underline" data-id="${comment.id}">답글</button>` : ''}
+            ${currentUser?.id === comment.author_id && !comment.is_deleted ? `<button class="delete-btn underline text-red-400" data-id="${comment.id}">삭제</button>` : ''}
+          </div>
+        </div>
+        <div class="replies space-y-2 ml-4 mt-2" id="replies-${comment.id}"></div> <!-- 대댓글용 공간 -->
+      `;
+    
+      commentList.appendChild(el);
+    
+      const replyBtn = el.querySelector(".reply-btn");
+      if (replyBtn) {
+        replyBtn.addEventListener("click", () => replyFrom(comment.id));
+      }
+    
+      const deleteBtn = el.querySelector(".delete-btn");
+      if (deleteBtn) {
+        deleteBtn.addEventListener("click", () => {
           if (confirm("댓글을 삭제하시겠습니까?")) {
             deleteComment(comment.id);
           }
         });
-        
-      });
+      }
     }
+    
+    
+  
+    function renderReply(reply) {
+      const parentRepliesContainer = document.getElementById(`replies-${reply.parent_id}`);
+      if (!parentRepliesContainer) return; // 부모 없으면 무시
+    
+      const el = document.createElement("div");
+      el.className = "bg-[#2f3033] p-2 rounded text-xs text-gray-300";
+    
+      const isPostAuthor = reply.author === currentPost.author;
+      el.innerHTML = `
+        <p>${reply.content}</p>
+        <p class="text-[11px] text-gray-400 mt-1">
+          작성자: ${reply.author}
+          ${isPostAuthor ? '<span class="ml-1 px-1 py-[1px] bg-gray-600 text-white rounded text-[10px]">작성자</span>' : ''}
+          | ${new Date(reply.created_at).toLocaleString("ko-KR", { year: "2-digit", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+        </p>
+      `;
+    
+      parentRepliesContainer.appendChild(el);
+    }
+    
+        
 
     /** ✅ 댓글 작성 이벤트
         로그인 여부 확인
@@ -344,13 +366,17 @@
           body: JSON.stringify({
             postId,
             content,
-            parentId: null
+            parentId: null // ✅ 댓글은 parentId: null
           })
         });
     
         const result = await res.json();
-        commentInput.value = "";
-        await loadComments(postId, currentPost); // 등록 후 최신 댓글 다시 불러오기
+        if (res.ok) {
+          commentInput.value = "";
+          await loadComments(postId, currentPost);
+        } else {
+          alert(result.message || "댓글 등록 실패");
+        }
       } catch (err) {
         console.error("댓글 등록 실패:", err);
         alert("댓글 등록 중 오류가 발생했습니다.");
@@ -358,19 +384,21 @@
     });
         
         
+        
 
     /** ✅ 페이지 로드 시 댓글 자동 렌더링
         페이지가 로드되었을 때, 기존 댓글이 있다면 자동으로 출력**/
-    async function loadComments(postId, post) {
+    async function loadComments(postId) {
       try {
-        const res = await authFetch(`http://localhost:4000/comments/${postId}`);
+        const res = await fetch(`http://localhost:4000/comments/${postId}`);
         const data = await res.json();
-
-        renderComments(data, post);
+    
+        renderComments(data); // ✅ 두 번째 인자인 post를 넘기지 않아야 해!
       } catch (err) {
         console.error("댓글 불러오기 실패:", err);
       }
     }
+        
     
     // 마지막에 호출
     loadComments(postId, currentPost);
