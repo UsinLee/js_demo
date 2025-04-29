@@ -56,21 +56,26 @@ router.post("/login", async (req, res) => {
     const accessToken = jwt.sign(
       { id: user.id, username: user.username },
       process.env.JWT_SECRET,
-      { expiresIn: "15m" }
+      { expiresIn: "1m" }
     );
 
-    // Refresh Token (긴 유효기간)
+    // Refresh Token 생성 (7일 유효)
+    const refreshTokenExpiresIn = 7 * 24 * 60 * 60; // 7일(초 단위)
+
     const refreshToken = jwt.sign(
       { id: user.id, username: user.username },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: refreshTokenExpiresIn } // 7일
     );
 
-    // 🔐 Refresh Token을 DB에 저장
+    // 저장할 만료시간 (현재시간 + 7일)
+    const expiresAt = new Date(Date.now() + refreshTokenExpiresIn * 1000);
+
     await pool.query(
-      "INSERT INTO refresh_tokens (user_id, refresh_token, created_at) VALUES ($1, $2, NOW())",
-      [user.id, refreshToken]
+      "INSERT INTO refresh_tokens (user_id, refresh_token, expires_at) VALUES ($1, $2, $3)",
+      [user.id, refreshToken, expiresAt]
     );
+
 
     return res.json({
       message: "로그인 성공",
@@ -85,8 +90,9 @@ router.post("/login", async (req, res) => {
   }
 });
 
-router.post("/token", async (req, res) => {
+router.post("/refresh", async (req, res) => {
   const { refreshToken } = req.body;
+  console.log('서버에서 받은 refreshToken:', refreshToken);
 
   if (!refreshToken) {
     return res.status(401).json({ message: "리프레시 토큰이 필요합니다." });
@@ -124,18 +130,22 @@ router.post("/token", async (req, res) => {
 
 router.post("/logout", authMiddleware, async (req, res) => {
   const userId = req.user.id;
-  const { refreshToken } = req.body;
+  const { refreshToken } = req.body; // body에서 받아오기
 
   if (!refreshToken) {
     return res.status(400).json({ message: "리프레시 토큰이 필요합니다." });
   }
 
   try {
-    // DB에서 해당 토큰 삭제
-    await pool.query(
+    // 해당 유저의 해당 refreshToken을 삭제
+    const result = await pool.query(
       "DELETE FROM refresh_tokens WHERE user_id = $1 AND refresh_token = $2",
       [userId, refreshToken]
     );
+
+    if (result.rowCount === 0) {
+      return res.status(400).json({ message: "토큰이 존재하지 않거나 이미 삭제되었습니다." });
+    }
 
     res.json({ message: "로그아웃 되었습니다." });
   } catch (err) {

@@ -16,6 +16,9 @@ export async function authFetch(url, options = {}) {
 
   // Access Token 만료 시 Refresh Token으로 재발급 요청
   if (response.status === 401) {
+    console.log('🔵 AccessToken 만료 감지');
+    console.log('🔵 보내는 RefreshToken:', refreshToken);
+
     try {
       const refreshRes = await fetch("http://localhost:4000/users/refresh", {
         method: "POST",
@@ -26,8 +29,11 @@ export async function authFetch(url, options = {}) {
       });
 
       const refreshData = await refreshRes.json();
+      console.log('🟡 서버에서 받은 refresh 결과:', refreshData);
 
       if (refreshRes.ok) {
+        console.log('🟢 AccessToken 재발급 성공');
+
         // 새 AccessToken 저장
         currentUser.accessToken = refreshData.accessToken;
         localStorage.setItem("currentUser", JSON.stringify(currentUser));
@@ -36,6 +42,7 @@ export async function authFetch(url, options = {}) {
         options.headers["Authorization"] = `Bearer ${refreshData.accessToken}`;
         response = await fetch(url, options);
       } else {
+        console.error("❌ 리프레시 실패:", refreshData.message);
         throw new Error("토큰 재발급 실패");
       }
     } catch (err) {

@@ -92,13 +92,39 @@
       logoutBtn.classList.add("hidden");
     }
 
-    logoutBtn.addEventListener("click", () => {
-      if (confirm("로그아웃 하시겠습니까?")) {
+    logoutBtn.addEventListener("click", async () => {
+      const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    
+      if (!currentUser || !currentUser.refreshToken || !currentUser.accessToken) {
+        alert("이미 로그인 정보가 없습니다.");
         localStorage.removeItem("currentUser");
-        alert("로그아웃 되었습니다.");
         location.reload();
+        return;
+      }
+    
+      if (confirm("로그아웃 하시겠습니까?")) {
+        try {
+          await fetch("http://localhost:4000/users/logout", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${currentUser.accessToken}`, 
+            },
+            body: JSON.stringify({ refreshToken: currentUser.refreshToken }),
+          });
+    
+          // 요청이 성공하든 실패하든 localStorage 삭제
+          localStorage.removeItem("currentUser");
+          alert("로그아웃 되었습니다.");
+          location.reload();
+        } catch (err) {
+          console.error("로그아웃 요청 실패:", err);
+          alert("로그아웃 중 오류가 발생했습니다.");
+        }
       }
     });
+    
+    
 
     let currentPost = null; // 전역으로 게시글 정보를 저장
 

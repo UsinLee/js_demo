@@ -13,8 +13,9 @@ function authenticateToken(req, res, next) {
 
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) {
-      return res.status(403).json({ message: "토큰이 유효하지 않습니다." });
+      return res.status(401).json({ message: "토큰이 만료되었거나 유효하지 않습니다." }); // ✅
     }
+  
 
     req.user = user; // 다음 미들웨어 또는 라우터에서 사용 가능
     next();
